@@ -1,4 +1,6 @@
 import dynamic from 'next/dynamic';
+import { connectDB } from '@/lib/mongodb';
+import Room from '@/models/Room';
 
 // Dynamic imports for client components (no SSR for Monaco)
 const EditorWrapper = dynamic(() => import('@/components/EditorWrapper'), {
@@ -15,19 +17,30 @@ interface PageProps {
   searchParams: { view?: string; embed?: string };
 }
 
+// Bypasses HTTP loopback requests on Vercel by querying MongoDB directly
 async function getRoomData(roomId: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/rooms/${roomId}`, {
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      return await res.json();
+    await connectDB();
+    let room = await Room.findOne({ roomId });
+
+    // Auto-create room if it doesn't exist (upsert pattern)
+    if (!room) {
+      room = await Room.create({
+        roomId,
+        code: '',
+        language: 'javascript',
+      });
     }
-  } catch (err) {
-    console.error('[Page] Failed to fetch room data:', err);
+
+    return {
+      roomId: room.roomId,
+      code: room.code,
+      roomLanguage: room.language || 'javascript', // avoid conflict with react/next variables
+    };
+  } catch (err: any) {
+    console.error('[Page] Direct DB fetch failed, using fallback:', err.message);
   }
-  return { roomId, code: '', language: 'javascript' };
+  return { roomId, code: '', roomLanguage: 'javascript' };
 }
 
 export default async function RoomPage({ params, searchParams }: PageProps) {
@@ -41,7 +54,7 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
       <EditorWrapper
         roomId={roomId}
         initialCode={roomData.code}
-        initialLanguage={roomData.language}
+        initialLanguage={roomData.roomLanguage}
         isReadOnly={isReadOnly}
         isEmbed={isEmbed}
       />
