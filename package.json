@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
+    "dev:frontend": "next dev",
+    "dev:backend": "node socket-server.js",
     "build": "next build",
-    "start": "set NODE_ENV=production && node server.js"
+    "start": "node server.js",
+    "start:frontend": "next start",
+    "start:backend": "node socket-server.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
