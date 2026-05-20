@@ -20,7 +20,12 @@ const getSocketUrl = (): string => {
   return 'http://localhost:3000';
 };
 
-export const socket: Socket = io(getSocketUrl(), {
+const URL = getSocketUrl();
+if (typeof window !== 'undefined') {
+  console.log('[Socket] Initialized with URL:', URL);
+}
+
+export const socket: Socket = io(URL, {
   autoConnect: false,
   reconnection: true,
   reconnectionAttempts: 5,
