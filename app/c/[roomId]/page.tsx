@@ -1,9 +1,11 @@
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 import { connectDB } from '@/lib/mongodb';
 import Room from '@/models/Room';
 
+export const dynamic = 'force-dynamic';
+
 // Dynamic imports for client components (no SSR for Monaco)
-const EditorWrapper = dynamic(() => import('@/components/EditorWrapper'), {
+const EditorWrapper = dynamicImport(() => import('@/components/EditorWrapper'), {
   ssr: false,
   loading: () => (
     <div className="editor-skeleton">

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Room from '@/models/Room';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/rooms/[roomId] — Fetch room data
 export async function GET(
   request: NextRequest,
