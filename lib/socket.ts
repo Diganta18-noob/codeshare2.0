@@ -4,25 +4,29 @@ import { io, Socket } from 'socket.io-client';
 const PRODUCTION_SOCKET_URL = 'https://codeshare-backend-rbe5.onrender.com';
 
 const getSocketUrl = (): string => {
-  // 1. If the environment variable is explicitly set at build time, use it
-  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
-    return process.env.NEXT_PUBLIC_SOCKET_URL;
-  }
-
-  // 2. Client-side: detect environment
+  // Client-side detection to avoid using localhost URLs in production environments
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
 
-    // Local development — connect to local monolith server
+    // Local development — connect to local server or environment variable
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
-      return 'http://localhost:3000';
+      return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
     }
 
-    // Production — always use the Render backend
+    // Production — use NEXT_PUBLIC_SOCKET_URL only if it is a production URL, otherwise fallback to Render backend
+    if (
+      process.env.NEXT_PUBLIC_SOCKET_URL &&
+      !process.env.NEXT_PUBLIC_SOCKET_URL.includes('localhost') &&
+      !process.env.NEXT_PUBLIC_SOCKET_URL.includes('127.0.0.1')
+    ) {
+      return process.env.NEXT_PUBLIC_SOCKET_URL;
+    }
+
     return PRODUCTION_SOCKET_URL;
   }
 
-  return 'http://localhost:3000';
+  // Server-side fallback
+  return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
 };
 
 const URL = getSocketUrl();
