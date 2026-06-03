@@ -47,6 +47,8 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<any>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const hasPendingSave = useRef(false);
+  const latestCodeRef = useRef(code);
 
   // Track remote selections and cursors
   const remoteSelections = useRef<Map<string, RemoteSelection>>(new Map());
@@ -173,6 +175,50 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     };
   }, [setCode, setLanguage]);
 
+  // Force-save unsaved code when user refreshes or leaves the page
+  useEffect(() => {
+    function flushSave() {
+      if (hasPendingSave.current) {
+        clearTimeout(saveTimeout.current);
+        const payload = JSON.stringify({ code: latestCodeRef.current });
+        // sendBeacon survives page unload — the browser sends it even after navigation
+        const sent = navigator.sendBeacon(
+          `/api/rooms/${roomId}`,
+          new Blob([payload], { type: 'application/json' })
+        );
+        if (!sent) {
+          // Fallback: synchronous fetch (keepalive)
+          fetch(`/api/rooms/${roomId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+        hasPendingSave.current = false;
+      }
+    }
+
+    function onBeforeUnload() {
+      flushSave();
+    }
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        flushSave();
+      }
+    }
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      flushSave(); // Also flush on component unmount
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [roomId]);
+
   // Handle local code changes
   const handleCodeChange = useCallback(
     (value: string | undefined) => {
@@ -182,6 +228,8 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
       }
       const newCode = value ?? '';
       setCode(newCode);
+      latestCodeRef.current = newCode;
+      hasPendingSave.current = true;
       socket.emit('code-change', { roomId, code: newCode });
 
       // Debounced DB persist (1.5s after last keystroke)
@@ -191,7 +239,9 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code: newCode }),
-        }).catch((err) => console.error('[Editor] Save failed:', err));
+        })
+          .then(() => { hasPendingSave.current = false; })
+          .catch((err) => console.error('[Editor] Save failed:', err));
       }, 1500);
     },
     [roomId, setCode]
