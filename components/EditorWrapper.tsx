@@ -12,6 +12,7 @@ interface EditorWrapperProps {
   roomId: string;
   initialCode: string;
   initialLanguage: string;
+  initialCreatedAt: string;
   isReadOnly: boolean;
   isEmbed: boolean;
 }
@@ -20,10 +21,11 @@ export default function EditorWrapper({
   roomId,
   initialCode,
   initialLanguage,
+  initialCreatedAt,
   isReadOnly,
   isEmbed,
 }: EditorWrapperProps) {
-  const { setCode, setLanguage, setViewerCount } = useEditorStore();
+  const { setCode, setLanguage, setViewerCount, setCreatedAt } = useEditorStore();
   const [showKeybindings, setShowKeybindings] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -31,7 +33,10 @@ export default function EditorWrapper({
   useEffect(() => {
     setCode(initialCode);
     setLanguage(initialLanguage);
-  }, [initialCode, initialLanguage, setCode, setLanguage]);
+    if (initialCreatedAt) {
+      setCreatedAt(initialCreatedAt);
+    }
+  }, [initialCode, initialLanguage, initialCreatedAt, setCode, setLanguage, setCreatedAt]);
 
   // Socket connection & room join
   useEffect(() => {

@@ -36,11 +36,12 @@ async function getRoomData(roomId: string) {
       roomId: room.roomId,
       code: room.code,
       roomLanguage: room.language || 'javascript', // avoid conflict with react/next variables
+      createdAt: room.createdAt ? room.createdAt.toISOString() : new Date().toISOString(),
     };
   } catch (err: any) {
     console.error('[Page] Direct DB fetch failed, using fallback:', err.message);
   }
-  return { roomId, code: '', roomLanguage: 'javascript' };
+  return { roomId, code: '', roomLanguage: 'javascript', createdAt: new Date().toISOString() };
 }
 
 export default async function RoomPage({ params, searchParams }: PageProps) {
@@ -55,6 +56,7 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
         roomId={roomId}
         initialCode={roomData.code}
         initialLanguage={roomData.roomLanguage}
+        initialCreatedAt={roomData.createdAt}
         isReadOnly={isReadOnly}
         isEmbed={isEmbed}
       />
