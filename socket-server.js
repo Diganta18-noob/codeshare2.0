@@ -235,10 +235,12 @@ io.on('connection', (socket) => {
   // Chat message
   socket.on('chat-send', ({ roomId, text }) => {
     if (!text || typeof text !== 'string' || text.trim().length === 0) return;
+    const xss = require('xss');
+    const sanitizedText = xss(text.trim().slice(0, 500));
     const color = getColor(roomId, socket.id);
     const message = {
       socketId: socket.id,
-      text: text.trim().slice(0, 500),
+      text: sanitizedText,
       color,
       timestamp: Date.now(),
     };

@@ -335,8 +335,9 @@ export default function EditorWrapper({
         {/* History Panel (right sidebar, before Chat sidebar if both open) */}
         <HistoryPanel
           roomId={roomId}
-          isVisible={showHistory}
-          onToggle={handleToggleHistory}
+          isOpen={showHistory}
+          onClose={handleToggleHistory}
+          isReadOnly={editorIsReadOnly}
         />
 
         {/* AI Assistant Panel */}

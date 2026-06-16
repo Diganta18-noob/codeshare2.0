@@ -1,196 +1,176 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 
-interface SnapshotItem {
+interface Version {
   _id: string;
+  roomId: string;
   code: string;
   language: string;
-  label: string;
+  files: any[];
+  savedBy: string;
   createdAt: string;
 }
 
 interface HistoryPanelProps {
   roomId: string;
-  isVisible: boolean;
-  onToggle: () => void;
+  isOpen: boolean;
+  onClose: () => void;
+  isReadOnly: boolean;
 }
 
-export default function HistoryPanel({ roomId, isVisible, onToggle }: HistoryPanelProps) {
-  const { setCode, setLanguage, code, language } = useEditorStore();
-  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [labelInput, setLabelInput] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+export default function HistoryPanel({ roomId, isOpen, onClose, isReadOnly }: HistoryPanelProps) {
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { setCode, setFiles, setLanguage, code, files, language } = useEditorStore();
 
-  const fetchSnapshots = useCallback(async () => {
-    setIsLoading(true);
+  const fetchVersions = async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`/api/rooms/${roomId}/snapshots`);
-      const data = await res.json();
-      if (data.success) {
-        setSnapshots(data.snapshots);
+      const res = await fetch(`/api/rooms/${roomId}/versions`);
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(data.versions || []);
       }
     } catch (err) {
-      console.error('Failed to load snapshots:', err);
+      console.error('Failed to fetch versions:', err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [roomId]);
+  };
 
   useEffect(() => {
-    if (isVisible) {
-      fetchSnapshots();
+    if (isOpen) {
+      fetchVersions();
     }
-  }, [isVisible, fetchSnapshots]);
+  }, [isOpen, roomId]);
 
-  const handleCreateSnapshot = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSaving) return;
-    setIsSaving(true);
-
+  const handleSaveVersion = async () => {
+    setSaving(true);
     try {
-      const res = await fetch(`/api/rooms/${roomId}/snapshots`, {
+      const res = await fetch(`/api/rooms/${roomId}/versions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
+          files,
           language,
-          label: labelInput.trim() || 'Manual Snapshot',
+          savedBy: socket.id ? `User-${socket.id.slice(-4)}` : 'Manual Save',
         }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setLabelInput('');
-        fetchSnapshots();
+      if (res.ok) {
+        await fetchVersions();
       }
     } catch (err) {
-      console.error('Failed to create snapshot:', err);
+      console.error('Failed to save version:', err);
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  const handleRestore = useCallback((snap: SnapshotItem) => {
-    if (confirm(`Are you sure you want to restore the code to the snapshot from ${new Date(snap.createdAt).toLocaleString()}?`)) {
-      setCode(snap.code);
-      setLanguage(snap.language);
-      
-      // Sync across websockets
-      socket.emit('code-change', { roomId, code: snap.code });
-      socket.emit('language-change', { roomId, language: snap.language });
+  const handleRestore = (version: Version) => {
+    if (isReadOnly) return;
+    if (!confirm('Are you sure you want to restore this version? This will overwrite the current editor state.')) return;
 
-      // Persist to DB
-      fetch(`/api/rooms/${roomId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: snap.code, language: snap.language }),
-      }).catch((err) => console.error('[History] Failed to persist restoration:', err));
+    if (version.files && version.files.length > 0) {
+      setFiles(version.files);
+      socket.emit('file-tree-change', { roomId, files: version.files });
+      socket.emit('code-change', { roomId, code: version.files[0].code, files: version.files });
+    } else {
+      setCode(version.code);
+      setLanguage(version.language);
+      socket.emit('code-change', { roomId, code: version.code, files: [] });
+      socket.emit('language-change', { roomId, language: version.language });
     }
-  }, [roomId, setCode, setLanguage]);
+    
+    // Automatically save a new version of the state before restore
+    fetch(`/api/rooms/${roomId}/versions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        files,
+        language,
+        savedBy: 'Auto-save (Before Restore)',
+      }),
+    });
 
-  if (!isVisible) return null;
+    onClose();
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <div className="chat-panel" style={{ borderLeft: '1px solid var(--bg-border)' }}>
-      {/* Header */}
-      <div className="chat-panel-header">
-        <div className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <div className="absolute inset-y-0 right-0 w-80 bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col z-40 animate-fade-in font-sans">
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-850">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Version History</span>
-          <span className="chat-msg-count">{snapshots.length}</span>
-        </div>
-        <button onClick={onToggle} className="output-clear-btn" title="Close history">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          Version History
+        </h3>
+        <button onClick={onClose} className="text-slate-400 hover:text-white transition">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
 
-      {/* Manual Snapshot Save Form */}
-      <form onSubmit={handleCreateSnapshot} className="p-3 border-b" style={{ borderColor: 'var(--bg-border)' }}>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Label (e.g., Before refactoring)"
-            value={labelInput}
-            onChange={(e) => setLabelInput(e.target.value)}
-            className="chat-input flex-1 py-1 text-xs"
-            style={{ height: '32px' }}
-          />
+      {!isReadOnly && (
+        <div className="p-4 border-b border-slate-800 bg-slate-900/50">
           <button
-            type="submit"
-            disabled={isSaving}
-            className="btn-premium btn-premium-primary text-xs px-3"
-            style={{ height: '32px' }}
+            onClick={handleSaveVersion}
+            disabled={saving}
+            className="w-full btn-premium btn-premium-primary text-xs py-2 justify-center"
           >
-            Save
+            {saving ? 'Saving...' : '💾 Save Current State'}
           </button>
+          <p className="text-[10px] text-slate-500 mt-2 text-center">
+            Max 30 versions stored per room
+          </p>
         </div>
-      </form>
+      )}
 
-      {/* Snapshots List */}
-      <div className="chat-messages flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-        {isLoading && (
-          <div className="text-center py-8 text-xs opacity-50">Loading versions...</div>
-        )}
-
-        {!isLoading && snapshots.length === 0 && (
-          <div className="chat-empty">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-20">
-              <path d="M12 8v4l3 3" />
-              <circle cx="12" cy="12" r="9" />
-            </svg>
-            <span>No snapshots saved yet</span>
-            <span className="text-[10px]">Snapshots will show up here.</span>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-32 gap-3 text-slate-500">
+            <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-medium">Loading history...</span>
           </div>
-        )}
-
-        {!isLoading && snapshots.map((snap) => (
-          <div
-            key={snap._id}
-            className="p-3 rounded-lg border flex flex-col gap-2 transition-all hover:bg-slate-900/40"
-            style={{
-              borderColor: 'var(--bg-border)',
-              background: 'rgba(30, 41, 59, 0.2)',
-            }}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-white truncate max-w-[150px]">
-                  {snap.label || 'Snapshot'}
-                </span>
-                <span className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                  {new Date(snap.createdAt).toLocaleString()}
+        ) : versions.length === 0 ? (
+          <div className="text-center text-slate-500 text-xs py-8">
+            No saved versions yet.
+          </div>
+        ) : (
+          versions.map((version) => (
+            <div key={version._id} className="bg-slate-850 border border-slate-800 rounded-xl p-3 hover:border-slate-700 transition-colors group">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-semibold text-slate-300">
+                  {new Date(version.createdAt).toLocaleString()}
                 </span>
               </div>
-              <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] uppercase font-semibold text-slate-400">
-                {snap.language}
-              </span>
+              <div className="text-[10px] text-slate-500 mb-3 flex items-center justify-between">
+                <span>Saved by: <span className="text-violet-300">{version.savedBy}</span></span>
+                <span className="uppercase text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                  {version.language}
+                </span>
+              </div>
+              {!isReadOnly && (
+                <button
+                  onClick={() => handleRestore(version)}
+                  className="w-full text-xs font-medium bg-slate-900 border border-slate-700 hover:bg-violet-600 hover:border-violet-500 hover:text-white text-slate-300 py-1.5 rounded transition-all opacity-0 md:opacity-100 lg:opacity-0 group-hover:opacity-100"
+                >
+                  Restore Version
+                </button>
+              )}
             </div>
-
-            {/* Code Snippet Preview (first 2 lines) */}
-            <pre
-              className="text-[10px] p-2 rounded bg-black/40 overflow-hidden font-mono text-slate-400 max-h-[44px]"
-              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
-            >
-              {snap.code.slice(0, 100) + (snap.code.length > 100 ? '...' : '')}
-            </pre>
-
-            <button
-              onClick={() => handleRestore(snap)}
-              className="btn-premium btn-premium-ghost py-1 text-[11px] w-full text-center mt-1"
-            >
-              Restore to Editor
-            </button>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
