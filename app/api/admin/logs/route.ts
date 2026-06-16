@@ -25,12 +25,13 @@ export async function GET(request: NextRequest) {
       filter.action = action;
     }
 
-    const logs = await AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await AuditLog.countDocuments(filter);
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      AuditLog.countDocuments(filter)
+    ]);
 
     return NextResponse.json({
       success: true,

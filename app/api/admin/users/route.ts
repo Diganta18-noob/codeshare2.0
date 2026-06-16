@@ -39,13 +39,14 @@ export async function GET(request: NextRequest) {
       filter.role = role;
     }
 
-    const users = await User.find(filter)
-      .select('-passwordHash')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await User.countDocuments(filter);
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select('-passwordHash')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(filter)
+    ]);
 
     return NextResponse.json({
       success: true,

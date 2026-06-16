@@ -16,25 +16,22 @@ export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    const totalUsers = await User.countDocuments();
-    const activeUsers = await User.countDocuments({ status: 'active' });
-    const totalPads = await Room.countDocuments();
-
-    // Calculate total edits
-    const editsAggregation = await Room.aggregate([
-      { $group: { _id: null, total: { $sum: '$totalEdits' } } }
+    const [totalUsers, activeUsers, totalPads, editsAggregation, recentPads, recentLogs] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ status: 'active' }),
+      Room.countDocuments(),
+      Room.aggregate([
+        { $group: { _id: null, total: { $sum: '$totalEdits' } } }
+      ]),
+      Room.find()
+        .sort({ lastAccessedAt: -1, updatedAt: -1 })
+        .limit(5),
+      AuditLog.find()
+        .sort({ createdAt: -1 })
+        .limit(10)
     ]);
+
     const totalEdits = editsAggregation[0]?.total || 0;
-
-    // Get active/recent pads
-    const recentPads = await Room.find()
-      .sort({ lastAccessedAt: -1, updatedAt: -1 })
-      .limit(5);
-
-    // Get recent audit logs
-    const recentLogs = await AuditLog.find()
-      .sort({ createdAt: -1 })
-      .limit(10);
 
     return NextResponse.json({
       success: true,

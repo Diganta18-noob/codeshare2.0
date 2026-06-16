@@ -19,12 +19,14 @@ export default function AdminDashboard() {
   // Users State
   const [users, setUsers] = useState<any[]>([]);
   const [usersSearch, setUsersSearch] = useState('');
+  const [debouncedUsersSearch, setDebouncedUsersSearch] = useState('');
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
 
   // Rooms State
   const [rooms, setRooms] = useState<any[]>([]);
   const [roomsSearch, setRoomsSearch] = useState('');
+  const [debouncedRoomsSearch, setDebouncedRoomsSearch] = useState('');
   const [roomsPage, setRoomsPage] = useState(1);
   const [roomsTotalPages, setRoomsTotalPages] = useState(1);
 
@@ -44,6 +46,22 @@ export default function AdminDashboard() {
     message: string;
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  // Debouncing for Users Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUsersSearch(usersSearch);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [usersSearch]);
+
+  // Debouncing for Rooms Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedRoomsSearch(roomsSearch);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [roomsSearch]);
 
   useEffect(() => {
     checkAuth();
@@ -71,9 +89,9 @@ export default function AdminDashboard() {
   };
 
   // Fetch Users
-  const fetchUsers = async () => {
+  const fetchUsers = async (searchVal = debouncedUsersSearch) => {
     try {
-      const res = await fetch(`/api/admin/users?q=${usersSearch}&page=${usersPage}&limit=8`);
+      const res = await fetch(`/api/admin/users?q=${encodeURIComponent(searchVal)}&page=${usersPage}&limit=8`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users || []);
@@ -85,9 +103,9 @@ export default function AdminDashboard() {
   };
 
   // Fetch Rooms
-  const fetchRooms = async () => {
+  const fetchRooms = async (searchVal = debouncedRoomsSearch) => {
     try {
-      const res = await fetch(`/api/admin/rooms?q=${roomsSearch}&page=${roomsPage}&limit=8`);
+      const res = await fetch(`/api/admin/rooms?q=${encodeURIComponent(searchVal)}&page=${roomsPage}&limit=8`);
       if (res.ok) {
         const data = await res.json();
         setRooms(data.rooms || []);
@@ -112,15 +130,33 @@ export default function AdminDashboard() {
     }
   };
 
-  // Trigger fetches based on active tab
+  // Tab 1 (Overview) Fetch Trigger
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'admin') {
-      if (activeTab === 'overview') fetchStats();
-      if (activeTab === 'users') fetchUsers();
-      if (activeTab === 'rooms') fetchRooms();
-      if (activeTab === 'logs') fetchLogs();
+    if (isAuthenticated && user?.role === 'admin' && activeTab === 'overview') {
+      fetchStats();
     }
-  }, [activeTab, isAuthenticated, user, usersSearch, usersPage, roomsSearch, roomsPage, logsFilter, logsPage]);
+  }, [activeTab, isAuthenticated, user]);
+
+  // Tab 2 (Users) Fetch Trigger
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin' && activeTab === 'users') {
+      fetchUsers(debouncedUsersSearch);
+    }
+  }, [activeTab, isAuthenticated, user, debouncedUsersSearch, usersPage]);
+
+  // Tab 3 (Rooms) Fetch Trigger
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin' && activeTab === 'rooms') {
+      fetchRooms(debouncedRoomsSearch);
+    }
+  }, [activeTab, isAuthenticated, user, debouncedRoomsSearch, roomsPage]);
+
+  // Tab 4 (Logs) Fetch Trigger
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin' && activeTab === 'logs') {
+      fetchLogs();
+    }
+  }, [activeTab, isAuthenticated, user, logsFilter, logsPage]);
 
   // User Actions
   const handleUserStatusChange = async (userId: string, newStatus: string) => {

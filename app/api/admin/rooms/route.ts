@@ -28,12 +28,13 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const rooms = await Room.find(filter)
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Room.countDocuments(filter);
+    const [rooms, total] = await Promise.all([
+      Room.find(filter)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Room.countDocuments(filter)
+    ]);
 
     return NextResponse.json({
       success: true,
