@@ -252,9 +252,10 @@ export default function OutputPanel({ isVisible, onToggle }: OutputPanelProps) {
         if (res.status === 503) {
           setErrorMsg(
             `Execution service unavailable.\n\n` +
-            `To fix this, self-host Piston and add to .env.local:\n` +
-            `PISTON_API_URL=https://your-piston-instance/api/v2/piston/execute\n\n` +
-            `Or use JavaScript which runs in the browser sandbox.`
+            `To fix this, self-host Piston (e.g. via Docker) and add the URL to your environment variables:\n` +
+            `• Local: PISTON_API_URL=http://localhost:2000/api/v2/execute\n` +
+            `• Vercel: Add PISTON_API_URL in Project Settings -> Environment Variables.\n\n` +
+            `Or use JavaScript which runs directly in your browser sandbox.`
           );
         } else {
           setErrorMsg(msg);
