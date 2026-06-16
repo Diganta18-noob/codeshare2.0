@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { requireAdmin } from '@/lib/auth';
 import Room from '@/models/Room';
 import { logAudit } from '@/lib/audit';
+import { globalCache } from '@/lib/cache';
 
 export async function DELETE(
   request: NextRequest,
@@ -32,6 +33,9 @@ export async function DELETE(
       targetType: 'room',
       metadata: { details: `Deleted room ${roomId} (language: ${room.language})` },
     });
+
+    // Invalidate server cache on delete
+    globalCache.clear();
 
     return NextResponse.json({
       success: true,

@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb';
 import { requireAdmin } from '@/lib/auth';
 import User from '@/models/User';
 import { logAudit } from '@/lib/audit';
+import { globalCache } from '@/lib/cache';
 
 export async function PATCH(
   request: NextRequest,
@@ -67,6 +68,9 @@ export async function PATCH(
       new: true,
     }).select('-passwordHash');
 
+    // Invalidate server cache on update
+    globalCache.clear();
+
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -108,6 +112,9 @@ export async function DELETE(
       targetType: 'user',
       metadata: { details: `Deleted user ${user.username} (${user.email})` },
     });
+
+    // Invalidate server cache on delete
+    globalCache.clear();
 
     return NextResponse.json({
       success: true,
