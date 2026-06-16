@@ -130,6 +130,38 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ clientSide: true, language: 'javascript' }, { status: 200 });
   }
 
+  // C# (csharp) → .NET Fiddle execution (fast, free, requires no API key, works out-of-the-box on Vercel)
+  // We run this directly if there's no custom Piston endpoint configured to save latency
+  if (language === 'csharp' && !process.env.PISTON_API_URL) {
+    try {
+      const startTime = Date.now();
+      const res = await fetch('https://dotnetfiddle.net/api/fiddles/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Compiler: 'Net45',
+          Language: 'CSharp',
+          ProjectType: 'Console',
+          CodeBlock: code,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const hasErrors = data.HasErrors || data.HasCompilationErrors;
+        return NextResponse.json({
+          success: true,
+          stdout: hasErrors ? '' : data.ConsoleOutput || '',
+          stderr: hasErrors ? data.ConsoleOutput || '' : '',
+          exitCode: hasErrors ? 1 : 0,
+          executionTime: Date.now() - startTime,
+          language: 'csharp',
+        });
+      }
+    } catch (err: any) {
+      console.warn(`[Execute] Direct .NET Fiddle call failed: ${err.message}`);
+    }
+  }
+
   const runtime = PISTON_RUNTIMES[language];
   if (!runtime) {
     return NextResponse.json(
@@ -157,6 +189,38 @@ export async function POST(request: NextRequest) {
         : err?.message || 'Unknown error';
       console.warn(`[Execute] Endpoint ${endpoint} failed: ${msg}`);
       errors.push(`${endpoint} → ${msg}`);
+    }
+  }
+
+  // Last-resort fallback for C# if custom Piston endpoint failed
+  if (language === 'csharp') {
+    try {
+      const startTime = Date.now();
+      const res = await fetch('https://dotnetfiddle.net/api/fiddles/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Compiler: 'Net45',
+          Language: 'CSharp',
+          ProjectType: 'Console',
+          CodeBlock: code,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const hasErrors = data.HasErrors || data.HasCompilationErrors;
+        return NextResponse.json({
+          success: true,
+          stdout: hasErrors ? '' : data.ConsoleOutput || '',
+          stderr: hasErrors ? data.ConsoleOutput || '' : '',
+          exitCode: hasErrors ? 1 : 0,
+          executionTime: Date.now() - startTime,
+          language: 'csharp',
+        });
+      }
+    } catch (err: any) {
+      console.warn(`[Execute] Fallback .NET Fiddle failed: ${err.message}`);
+      errors.push(`.NET Fiddle Fallback → ${err.message}`);
     }
   }
 
