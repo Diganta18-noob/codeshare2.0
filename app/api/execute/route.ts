@@ -135,6 +135,12 @@ export async function POST(request: NextRequest) {
   if (language === 'csharp' && !process.env.PISTON_API_URL) {
     try {
       const startTime = Date.now();
+      
+      // .NET Fiddle requires class Program and Main method to be public
+      const formattedCode = code
+        .replace(/(?:\b(private|internal|protected|public)\s+)?class\s+Program\b/g, 'public class Program')
+        .replace(/(?:\b(private|internal|protected|public)\s+)?static\s+(void|async\s+Task|Task)\s+Main\b/g, 'public static $2 Main');
+
       const res = await fetch('https://dotnetfiddle.net/api/fiddles/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,7 +148,7 @@ export async function POST(request: NextRequest) {
           Compiler: 'Net45',
           Language: 'CSharp',
           ProjectType: 'Console',
-          CodeBlock: code,
+          CodeBlock: formattedCode,
         }),
       });
       if (res.ok) {
@@ -196,6 +202,12 @@ export async function POST(request: NextRequest) {
   if (language === 'csharp') {
     try {
       const startTime = Date.now();
+      
+      // .NET Fiddle requires class Program and Main method to be public
+      const formattedCode = code
+        .replace(/(?:\b(private|internal|protected|public)\s+)?class\s+Program\b/g, 'public class Program')
+        .replace(/(?:\b(private|internal|protected|public)\s+)?static\s+(void|async\s+Task|Task)\s+Main\b/g, 'public static $2 Main');
+
       const res = await fetch('https://dotnetfiddle.net/api/fiddles/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -203,7 +215,7 @@ export async function POST(request: NextRequest) {
           Compiler: 'Net45',
           Language: 'CSharp',
           ProjectType: 'Console',
-          CodeBlock: code,
+          CodeBlock: formattedCode,
         }),
       });
       if (res.ok) {
