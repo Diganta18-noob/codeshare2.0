@@ -37,6 +37,14 @@ export default function AdminDashboard() {
   // Action status/errors
   const [actionMessage, setActionMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  // Confirmation Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
@@ -134,37 +142,51 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUserDelete = async (userId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this user account? This cannot be undone.')) return;
-    try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setActionMessage({ text: 'User deleted successfully.', type: 'success' });
-        fetchUsers();
-      } else {
-        const data = await res.json();
-        setActionMessage({ text: data.error || 'Failed to delete user.', type: 'error' });
+  const handleUserDelete = (userId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete User',
+      message: 'Are you sure you want to permanently delete this user account? This cannot be undone.',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+          if (res.ok) {
+            setActionMessage({ text: 'User deleted successfully.', type: 'success' });
+            fetchUsers();
+          } else {
+            const data = await res.json();
+            setActionMessage({ text: data.error || 'Failed to delete user.', type: 'error' });
+          }
+        } catch {
+          setActionMessage({ text: 'Error deleting user.', type: 'error' });
+        }
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
       }
-    } catch {
-      setActionMessage({ text: 'Error deleting user.', type: 'error' });
-    }
+    });
   };
 
   // Room Actions
-  const handleRoomDelete = async (roomId: string) => {
-    if (!confirm(`Are you sure you want to delete room ${roomId}? All contents and history will be lost.`)) return;
-    try {
-      const res = await fetch(`/api/admin/rooms/${roomId}`, { method: 'DELETE' });
-      if (res.ok) {
-        setActionMessage({ text: 'Room deleted successfully.', type: 'success' });
-        fetchRooms();
-      } else {
-        const data = await res.json();
-        setActionMessage({ text: data.error || 'Failed to delete room.', type: 'error' });
+  const handleRoomDelete = (roomId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Purge Room',
+      message: `Are you sure you want to delete room ${roomId}? All contents and history will be lost.`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/rooms/${roomId}`, { method: 'DELETE' });
+          if (res.ok) {
+            setActionMessage({ text: 'Room deleted successfully.', type: 'success' });
+            fetchRooms();
+          } else {
+            const data = await res.json();
+            setActionMessage({ text: data.error || 'Failed to delete room.', type: 'error' });
+          }
+        } catch {
+          setActionMessage({ text: 'Error deleting room.', type: 'error' });
+        }
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
       }
-    } catch {
-      setActionMessage({ text: 'Error deleting room.', type: 'error' });
-    }
+    });
   };
 
   const handleLogout = async () => {
@@ -248,19 +270,44 @@ export default function AdminDashboard() {
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-6 lg:p-8 overflow-y-auto relative">
+          {/* Action Toast */}
           {actionMessage && (
             <div
-              className={`mb-6 p-4 rounded-xl border text-sm flex items-center justify-between ${
+              className={`fixed bottom-6 right-6 z-50 p-4 rounded-xl shadow-2xl border text-sm flex items-center gap-4 animate-fade-in max-w-sm ${
                 actionMessage.type === 'success'
-                  ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
-                  : 'bg-red-950/40 border-red-800 text-red-200'
+                  ? 'bg-emerald-950/90 backdrop-blur-md border-emerald-800 text-emerald-200'
+                  : 'bg-red-950/90 backdrop-blur-md border-red-800 text-red-200'
               }`}
             >
-              <span>{actionMessage.text}</span>
-              <button onClick={() => setActionMessage(null)} className="hover:text-white font-bold px-2">
+              <div className="flex-1">{actionMessage.text}</div>
+              <button onClick={() => setActionMessage(null)} className="hover:text-white font-bold opacity-70 hover:opacity-100 transition-opacity">
                 ✕
               </button>
+            </div>
+          )}
+
+          {/* Confirmation Modal */}
+          {confirmDialog.isOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4">
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full animate-fade-in">
+                <h3 className="text-xl font-bold text-white mb-2">{confirmDialog.title}</h3>
+                <p className="text-slate-400 text-sm mb-6">{confirmDialog.message}</p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+                    className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDialog.onConfirm}
+                    className="px-4 py-2 text-sm font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-lg shadow-red-900/20"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
