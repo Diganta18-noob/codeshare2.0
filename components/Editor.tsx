@@ -378,7 +378,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
       {/* File Tabs Bar */}
       {files.length > 0 && (
         <div
-          className="flex items-center gap-1 px-4 overflow-x-auto flex-shrink-0"
+          className="flex items-center overflow-x-auto flex-shrink-0"
           style={{
             height: '36px',
             background: '#0d1117',
@@ -391,13 +391,17 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
               <button
                 key={file.name + '-tab-' + idx}
                 onClick={() => handleTabClick(idx)}
-                className="flex items-center gap-1.5 px-3 h-full text-xs font-mono border-t-2 border-transparent transition-all"
+                className="flex items-center gap-1.5 px-3 h-full text-xs font-mono whitespace-nowrap transition-colors flex-shrink-0"
                 style={{
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-dim)',
                   background: isActive ? '#0a0a0a' : 'transparent',
-                  borderTopColor: isActive ? 'var(--accent-primary)' : 'transparent',
-                  borderRight: isActive ? '1px solid var(--bg-border)' : 'none',
-                  borderLeft: isActive ? '1px solid var(--bg-border)' : 'none',
+                  borderTop: isActive
+                    ? '2px solid var(--accent-primary)'
+                    : '2px solid transparent',
+                  borderRight: '1px solid var(--bg-border)',
+                  borderBottom: isActive ? '1px solid #0a0a0a' : 'none',
+                  borderLeft: 'none',
+                  marginBottom: isActive ? '-1px' : '0',
                 }}
               >
                 <span>{file.name}</span>
