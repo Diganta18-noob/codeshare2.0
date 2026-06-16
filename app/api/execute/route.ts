@@ -20,6 +20,10 @@ const LANGUAGE_MAP: Record<string, { language: string; version: string }> = {
   sql: { language: 'sqlite3', version: '3.36.0' },
 };
 
+// Configurable Piston API URL — set PISTON_API_URL env var to your self-hosted instance
+const PISTON_API_URL =
+  process.env.PISTON_API_URL || 'https://emkc.org/api/v2/piston/execute';
+
 export async function POST(request: NextRequest) {
   try {
     const { language, code } = await request.json();
@@ -39,6 +43,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // JavaScript can be run client-side — tell the client to use the sandbox
+    if (language === 'javascript') {
+      return NextResponse.json(
+        { clientSide: true, language: 'javascript' },
+        { status: 200 }
+      );
+    }
+
     const runtime = LANGUAGE_MAP[language];
     if (!runtime) {
       return NextResponse.json(
@@ -53,7 +65,7 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch('https://emkc.org/api/v2/piston/execute', {
+    const response = await fetch(PISTON_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -68,7 +80,19 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('[Execute] Piston error:', text);
+      console.error('[Execute] Piston error:', response.status, text);
+
+      // Detect the public Piston API being shut down / whitelist-only
+      if (response.status === 403 || response.status === 401 || text.includes('whitelist')) {
+        return NextResponse.json(
+          {
+            error: 'The public Piston API is no longer available. To run non-JavaScript code, self-host a Piston instance and set the PISTON_API_URL environment variable.',
+            pistonUnavailable: true,
+          },
+          { status: 503 }
+        );
+      }
+
       return NextResponse.json(
         { error: 'Execution service error', details: text },
         { status: 502 }
@@ -95,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
     console.error('[Execute] Failed:', error.message);
     return NextResponse.json(
-      { error: 'Failed to execute code' },
+      { error: 'Failed to execute code. The execution service may be unavailable.' },
       { status: 500 }
     );
   }

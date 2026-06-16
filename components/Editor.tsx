@@ -380,7 +380,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
         <div
           className="flex items-center overflow-x-auto flex-shrink-0"
           style={{
-            height: '36px',
+            height: '40px',
             background: '#0d1117',
             borderBottom: '1px solid var(--bg-border)',
           }}
