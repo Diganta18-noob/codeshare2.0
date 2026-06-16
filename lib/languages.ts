@@ -36,3 +36,9 @@ export function getLabelForLanguage(languageId: string): string {
   const lang = LANGUAGES.find((l) => l.id === languageId);
   return lang?.label || languageId;
 }
+
+export function getLanguageForExtension(extension: string): string {
+  const cleanExt = extension.startsWith('.') ? extension : `.${extension}`;
+  const lang = LANGUAGES.find((l) => l.extension === cleanExt.toLowerCase());
+  return lang?.id || 'javascript';
+}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import { socket } from '@/lib/socket';
 import { useEditorStore } from '@/store/editorStore';
-import type { editor, IDisposable } from 'monaco-editor';
+import type { editor } from 'monaco-editor';
 
 interface EditorProps {
   roomId: string;
@@ -42,13 +42,31 @@ interface RemoteCursor {
 }
 
 export default function Editor({ roomId, isReadOnly }: EditorProps) {
-  const { code, language, setCode, setLanguage, setCursorPosition } = useEditorStore();
+  const {
+    code,
+    language,
+    files,
+    activeFileIndex,
+    setCode,
+    setLanguage,
+    setCursorPosition,
+    setFiles,
+    setActiveFileIndex,
+  } = useEditorStore();
+
   const isRemoteChange = useRef(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<any>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
   const hasPendingSave = useRef(false);
   const latestCodeRef = useRef(code);
+  const latestFilesRef = useRef(files);
+
+  // Sync refs to prevent stale closure issues in visibility handlers
+  useEffect(() => {
+    latestCodeRef.current = code;
+    latestFilesRef.current = files;
+  }, [code, files]);
 
   // Track remote selections and cursors
   const remoteSelections = useRef<Map<string, RemoteSelection>>(new Map());
@@ -135,13 +153,28 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
 
   // Socket listeners for remote changes
   useEffect(() => {
-    function onCodeUpdate(newCode: string) {
+    function onCodeUpdate(data: { code: string; files?: any[] }) {
       isRemoteChange.current = true;
-      setCode(newCode);
+      if (data.files && data.files.length > 0) {
+        setFiles(data.files);
+      } else {
+        setCode(data.code);
+      }
     }
 
     function onLanguageUpdate(lang: string) {
       setLanguage(lang);
+    }
+
+    function onFileTreeUpdate(data: { files: any[] }) {
+      isRemoteChange.current = true;
+      if (data.files) {
+        setFiles(data.files);
+      }
+    }
+
+    function onFileSwitchUpdate(data: { activeFileIndex: number }) {
+      setActiveFileIndex(data.activeFileIndex);
     }
 
     function onSelectionUpdate(data: RemoteSelection) {
@@ -162,6 +195,8 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
 
     socket.on('code-update', onCodeUpdate);
     socket.on('language-update', onLanguageUpdate);
+    socket.on('file-tree-update', onFileTreeUpdate);
+    socket.on('file-switch-update', onFileSwitchUpdate);
     socket.on('selection-update', onSelectionUpdate);
     socket.on('cursor-update', onCursorUpdate);
     socket.on('user-left', onUserLeft);
@@ -169,25 +204,28 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     return () => {
       socket.off('code-update', onCodeUpdate);
       socket.off('language-update', onLanguageUpdate);
+      socket.off('file-tree-update', onFileTreeUpdate);
+      socket.off('file-switch-update', onFileSwitchUpdate);
       socket.off('selection-update', onSelectionUpdate);
       socket.off('cursor-update', onCursorUpdate);
       socket.off('user-left', onUserLeft);
     };
-  }, [setCode, setLanguage]);
+  }, [setCode, setLanguage, setFiles, setActiveFileIndex]);
 
   // Force-save unsaved code when user refreshes or leaves the page
   useEffect(() => {
     function flushSave() {
       if (hasPendingSave.current) {
         clearTimeout(saveTimeout.current);
-        const payload = JSON.stringify({ code: latestCodeRef.current });
-        // sendBeacon survives page unload — the browser sends it even after navigation
+        const payload = JSON.stringify({
+          code: latestCodeRef.current,
+          files: latestFilesRef.current,
+        });
         const sent = navigator.sendBeacon(
           `/api/rooms/${roomId}`,
           new Blob([payload], { type: 'application/json' })
         );
         if (!sent) {
-          // Fallback: synchronous fetch (keepalive)
           fetch(`/api/rooms/${roomId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -213,7 +251,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      flushSave(); // Also flush on component unmount
+      flushSave();
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
@@ -228,9 +266,16 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
       }
       const newCode = value ?? '';
       setCode(newCode);
+
+      // Perform store update which recalculates current state
+      const nextStoreState = useEditorStore.getState();
+      const currentFiles = nextStoreState.files;
+
       latestCodeRef.current = newCode;
       hasPendingSave.current = true;
-      socket.emit('code-change', { roomId, code: newCode });
+
+      // Sync both code content and files tree list via socket
+      socket.emit('code-change', { roomId, code: newCode, files: currentFiles });
 
       // Debounced DB persist (1.5s after last keystroke)
       clearTimeout(saveTimeout.current);
@@ -238,9 +283,11 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
         fetch(`/api/rooms/${roomId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: newCode }),
+          body: JSON.stringify({ code: newCode, files: currentFiles }),
         })
-          .then(() => { hasPendingSave.current = false; })
+          .then(() => {
+            hasPendingSave.current = false;
+          })
           .catch((err) => console.error('[Editor] Save failed:', err));
       }, 1500);
     },
@@ -318,49 +365,90 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
       });
     });
 
-    // Focus editor
     editor.focus();
   }, [setCursorPosition, roomId]);
 
+  const handleTabClick = (index: number) => {
+    setActiveFileIndex(index);
+    socket.emit('file-switch', { roomId, activeFileIndex: index });
+  };
+
   return (
-    <MonacoEditor
-      height="100%"
-      language={language}
-      value={code}
-      onChange={handleCodeChange}
-      onMount={handleMount}
-      loading={
-        <div className="editor-skeleton">
-          <div className="editor-skeleton-pulse" />
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* File Tabs Bar */}
+      {files.length > 0 && (
+        <div
+          className="flex items-center gap-1 px-4 overflow-x-auto flex-shrink-0"
+          style={{
+            height: '36px',
+            background: '#0d1117',
+            borderBottom: '1px solid var(--bg-border)',
+          }}
+        >
+          {files.map((file, idx) => {
+            const isActive = idx === activeFileIndex;
+            return (
+              <button
+                key={file.name + '-tab-' + idx}
+                onClick={() => handleTabClick(idx)}
+                className="flex items-center gap-1.5 px-3 h-full text-xs font-mono border-t-2 border-transparent transition-all"
+                style={{
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: isActive ? '#0a0a0a' : 'transparent',
+                  borderTopColor: isActive ? 'var(--accent-primary)' : 'transparent',
+                  borderRight: isActive ? '1px solid var(--bg-border)' : 'none',
+                  borderLeft: isActive ? '1px solid var(--bg-border)' : 'none',
+                }}
+              >
+                <span>{file.name}</span>
+              </button>
+            );
+          })}
         </div>
-      }
-      options={{
-        readOnly: isReadOnly,
-        fontSize: 14,
-        fontFamily: "'JetBrains Mono', monospace",
-        fontLigatures: true,
-        minimap: { enabled: false },
-        scrollBeyondLastLine: false,
-        wordWrap: 'on',
-        lineNumbers: 'on',
-        renderLineHighlight: 'line',
-        cursorBlinking: 'smooth',
-        cursorSmoothCaretAnimation: 'on',
-        smoothScrolling: true,
-        padding: { top: 16, bottom: 16 },
-        automaticLayout: true,
-        tabSize: 2,
-        bracketPairColorization: { enabled: true },
-        guides: { bracketPairs: true },
-        overviewRulerLanes: 0,
-        hideCursorInOverviewRuler: true,
-        overviewRulerBorder: false,
-        scrollbar: {
-          verticalScrollbarSize: 8,
-          horizontalScrollbarSize: 8,
-          useShadows: false,
-        },
-      }}
-    />
+      )}
+
+      {/* Editor Frame */}
+      <div className="flex-1 overflow-hidden">
+        <MonacoEditor
+          height="100%"
+          language={language}
+          value={code}
+          onChange={handleCodeChange}
+          onMount={handleMount}
+          loading={
+            <div className="editor-skeleton">
+              <div className="editor-skeleton-pulse" />
+            </div>
+          }
+          options={{
+            readOnly: isReadOnly,
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontLigatures: true,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            wordWrap: 'on',
+            lineNumbers: 'on',
+            renderLineHighlight: 'line',
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            smoothScrolling: true,
+            padding: { top: 16, bottom: 16 },
+            automaticLayout: true,
+            tabSize: 2,
+            bracketPairColorization: { enabled: true },
+            guides: { bracketPairs: true },
+            overviewRulerLanes: 0,
+            hideCursorInOverviewRuler: true,
+            overviewRulerBorder: false,
+            scrollbar: {
+              verticalScrollbarSize: 8,
+              horizontalScrollbarSize: 8,
+              useShadows: false,
+            },
+          }}
+        />
+      </div>
+    </div>
   );
 }

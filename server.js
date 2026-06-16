@@ -55,11 +55,20 @@ app.prepare().then(() => {
       if (mongoose.connection.readyState === 0) {
         await mongoose.connect(mongoUri, { dbName: 'codeshare', bufferCommands: false });
       }
-      // Define schema inline for server.js (CJS context)
       const schema = new mongoose.Schema({
         roomId: { type: String, required: true, unique: true, index: true },
         code: { type: String, default: '' },
         language: { type: String, default: 'javascript' },
+        files: {
+          type: [
+            {
+              name: { type: String, required: true },
+              code: { type: String, default: '' },
+              language: { type: String, default: 'javascript' },
+            },
+          ],
+          default: [],
+        },
         viewerCount: { type: Number, default: 0 },
       }, { timestamps: true });
       // No TTL index — rooms persist forever
@@ -103,16 +112,25 @@ app.prepare().then(() => {
     return USER_COLORS[0];
   }
 
-  function debouncedSave(roomId, code) {
+  function debouncedSave(roomId, code, files) {
     if (saveTimers.has(roomId)) {
       clearTimeout(saveTimers.get(roomId));
     }
     saveTimers.set(roomId, setTimeout(async () => {
       try {
         const Room = await getRoom();
+        const updateData = {};
+        if (code !== undefined) updateData.code = code;
+        if (files !== undefined) {
+          updateData.files = files;
+          if (files.length > 0) {
+            updateData.code = files[0].code;
+            updateData.language = files[0].language;
+          }
+        }
         await Room.findOneAndUpdate(
           { roomId },
-          { code, updatedAt: new Date() },
+          { ...updateData, updatedAt: new Date() },
           { upsert: true }
         );
       } catch (err) {
@@ -139,13 +157,54 @@ app.prepare().then(() => {
       socket.emit('user-color', color);
 
       io.to(roomId).emit('presence-update', count);
+
+      // Broadcast system message to chat
+      io.to(roomId).emit('system-message', {
+        text: `User-${socket.id.slice(-4)} joined the room`,
+        timestamp: Date.now(),
+      });
+
       console.log(`[Socket] ${socket.id} joined room ${roomId} (${count} viewers, color: ${color.id})`);
     });
 
     // Code change — broadcast to everyone else in room
-    socket.on('code-change', ({ roomId, code }) => {
-      socket.to(roomId).emit('code-update', code);
-      debouncedSave(roomId, code);
+    socket.on('code-change', ({ roomId, code, files }) => {
+      socket.to(roomId).emit('code-update', { code, files });
+      debouncedSave(roomId, code, files);
+    });
+
+    // File tree change (create/rename/delete)
+    socket.on('file-tree-change', ({ roomId, files }) => {
+      socket.to(roomId).emit('file-tree-update', { files });
+      debouncedSave(roomId, undefined, files);
+    });
+
+    // Switch active file
+    socket.on('file-switch', ({ roomId, activeFileIndex }) => {
+      socket.to(roomId).emit('file-switch-update', { activeFileIndex });
+    });
+
+    // Room lock change
+    socket.on('room-lock-change', ({ roomId, isLocked, lockedBy }) => {
+      socket.to(roomId).emit('room-lock-update', { isLocked, lockedBy });
+      
+      io.to(roomId).emit('system-message', {
+        text: `Room is now ${isLocked ? 'LOCKED (read-only for others)' : 'UNLOCKED'}`,
+        timestamp: Date.now(),
+      });
+    });
+
+    // Chat message
+    socket.on('chat-send', ({ roomId, text }) => {
+      if (!text || typeof text !== 'string' || text.trim().length === 0) return;
+      const color = getColor(roomId, socket.id);
+      const message = {
+        socketId: socket.id,
+        text: text.trim().slice(0, 500),
+        color,
+        timestamp: Date.now(),
+      };
+      io.to(roomId).emit('chat-message', message);
     });
 
     // Selection change — broadcast to everyone else in room
@@ -171,6 +230,13 @@ app.prepare().then(() => {
     // Language change
     socket.on('language-change', ({ roomId, language }) => {
       socket.to(roomId).emit('language-update', language);
+      
+      const color = getColor(roomId, socket.id);
+      io.to(roomId).emit('system-message', {
+        text: `User-${socket.id.slice(-4)} changed language to ${language}`,
+        timestamp: Date.now(),
+      });
+
       // Save language to DB
       (async () => {
         try {
@@ -195,6 +261,11 @@ app.prepare().then(() => {
 
           // Tell others to remove this user's selection/cursor
           socket.to(roomId).emit('user-left', { socketId: socket.id });
+
+          socket.to(roomId).emit('system-message', {
+            text: `User-${socket.id.slice(-4)} left the room`,
+            timestamp: Date.now(),
+          });
 
           // Remove color assignment
           removeColor(roomId, socket.id);

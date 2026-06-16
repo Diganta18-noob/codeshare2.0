@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "node --max-old-space-size=4096 server.js",
     "dev:frontend": "next dev",
-    "dev:backend": "node socket-server.js",
+    "dev:backend": "node --max-old-space-size=4096 socket-server.js",
     "build": "next build",
-    "start": "node server.js",
+    "start": "node --max-old-space-size=4096 server.js",
     "start:frontend": "next start",
-    "start:backend": "node socket-server.js"
+    "start:backend": "node --max-old-space-size=4096 socket-server.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Room from '@/models/Room';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+// Simple hash function
+function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
 
 // GET /api/rooms/[roomId] — Fetch room data
 export async function GET(
@@ -21,13 +27,23 @@ export async function GET(
         roomId,
         code: '',
         language: 'javascript',
+        files: [{ name: 'index.js', code: '', language: 'javascript' }],
       });
     }
 
+    let files = room.files || [];
+    if (files.length === 0) {
+      files = [{ name: 'index.js', code: room.code || '', language: room.language || 'javascript' }];
+    }
+
+    const hideContent = room.passwordHash && !room.isLocked;
     return NextResponse.json({
       roomId: room.roomId,
-      code: room.code,
+      code: hideContent ? '' : room.code,
       language: room.language,
+      files: hideContent ? [] : files,
+      isLocked: room.isLocked || false,
+      hasPassword: !!room.passwordHash,
     });
   } catch (error: any) {
     console.error('[API] Failed to fetch room:', error.message);
@@ -38,7 +54,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/rooms/[roomId] — Update room code/language
+// PATCH /api/rooms/[roomId] — Update room code/language/lock/password/files
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { roomId: string } }
@@ -51,6 +67,24 @@ export async function PATCH(
     const updateData: Record<string, any> = {};
     if (body.code !== undefined) updateData.code = body.code;
     if (body.language !== undefined) updateData.language = body.language;
+    if (body.isLocked !== undefined) updateData.isLocked = body.isLocked;
+
+    if (body.files !== undefined) {
+      updateData.files = body.files;
+      if (body.files.length > 0) {
+        updateData.code = body.files[0].code;
+        updateData.language = body.files[0].language;
+      }
+    }
+
+    // Handle password setting/clearing
+    if (body.password !== undefined) {
+      if (body.password === null || body.password === '') {
+        updateData.passwordHash = null;
+      } else {
+        updateData.passwordHash = hashPassword(body.password);
+      }
+    }
 
     const room = await Room.findOneAndUpdate(
       { roomId },
@@ -62,6 +96,9 @@ export async function PATCH(
       roomId: room.roomId,
       code: room.code,
       language: room.language,
+      files: room.files || [],
+      isLocked: room.isLocked || false,
+      hasPassword: !!room.passwordHash,
     });
   } catch (error: any) {
     console.error('[API] Failed to update room:', error.message);
@@ -86,6 +123,14 @@ export async function POST(
     if (body.code !== undefined) updateData.code = body.code;
     if (body.language !== undefined) updateData.language = body.language;
 
+    if (body.files !== undefined) {
+      updateData.files = body.files;
+      if (body.files.length > 0) {
+        updateData.code = body.files[0].code;
+        updateData.language = body.files[0].language;
+      }
+    }
+
     const room = await Room.findOneAndUpdate(
       { roomId },
       { ...updateData, updatedAt: new Date() },
@@ -96,6 +141,7 @@ export async function POST(
       roomId: room.roomId,
       code: room.code,
       language: room.language,
+      files: room.files || [],
     });
   } catch (error: any) {
     console.error('[API] Failed to save room (beacon):', error.message);

@@ -31,19 +31,36 @@ async function getRoomData(roomId: string) {
         roomId,
         code: '',
         language: 'javascript',
+        files: [{ name: 'index.js', code: '', language: 'javascript' }],
       });
     }
 
+    let files = room.files || [];
+    if (files.length === 0) {
+      files = [{ name: 'index.js', code: room.code || '', language: room.language || 'javascript' }];
+    }
+
+    const serializedFiles = files.map((f: any) => ({
+      name: f.name,
+      code: f.code,
+      language: f.language,
+    }));
+
+    const hideContent = room.passwordHash && !room.isLocked;
+
     return {
       roomId: room.roomId,
-      code: room.code,
+      code: hideContent ? '' : room.code,
       roomLanguage: room.language || 'javascript', // avoid conflict with react/next variables
       createdAt: room.createdAt ? room.createdAt.toISOString() : new Date().toISOString(),
+      isLocked: room.isLocked || false,
+      hasPassword: !!room.passwordHash,
+      files: hideContent ? [] : serializedFiles,
     };
   } catch (err: any) {
     console.error('[Page] Direct DB fetch failed, using fallback:', err.message);
   }
-  return { roomId, code: '', roomLanguage: 'javascript', createdAt: new Date().toISOString() };
+  return { roomId, code: '', roomLanguage: 'javascript', createdAt: new Date().toISOString(), isLocked: false, hasPassword: false, files: [] };
 }
 
 export default async function RoomPage({ params, searchParams }: PageProps) {
@@ -61,6 +78,9 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
         initialCreatedAt={roomData.createdAt}
         isReadOnly={isReadOnly}
         isEmbed={isEmbed}
+        initialIsLocked={roomData.isLocked}
+        initialHasPassword={roomData.hasPassword}
+        initialFiles={roomData.files}
       />
     </div>
   );
