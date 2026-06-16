@@ -144,6 +144,25 @@ npm run dev:frontend
 npm run dev:backend
 ```
 
+### 5. Multi-Language Code Execution Setup
+JavaScript runs client-side inside a sandboxed iframe out-of-the-box. To execute backend languages (Python, Go, C++, Rust, etc.), you must self-host a Piston instance (since the public API is restricted):
+
+1. **Start the Piston Container**:
+   ```bash
+   docker run -d -p 2000:2000 --name piston engineer-man/piston
+   ```
+2. **Install Language Runtimes** (e.g., Python, Node.js, Go, Rust):
+   ```bash
+   docker exec -it piston piston pkg install python nodejs go rust
+   ```
+3. **Configure Environment Variables**:
+   Open `.env.local` and add:
+   ```env
+   PISTON_API_URL=http://localhost:2000/api/v2/execute
+   ```
+4. **Restart the App**:
+   Restart your Next.js development server to load the new environment variable.
+
 ---
 
 ## 💡 Keyboard Shortcuts
