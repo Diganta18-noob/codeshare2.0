@@ -391,7 +391,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
               <button
                 key={file.name + '-tab-' + idx}
                 onClick={() => handleTabClick(idx)}
-                className="flex items-center gap-1.5 px-3 h-full text-xs font-mono whitespace-nowrap transition-colors flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 h-full text-xs font-mono whitespace-nowrap transition-colors flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)]"
                 style={{
                   color: isActive ? 'var(--text-primary)' : 'var(--text-dim)',
                   background: isActive ? '#0a0a0a' : 'transparent',
