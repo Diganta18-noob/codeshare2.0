@@ -377,14 +377,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     <div className="flex flex-col h-full overflow-hidden">
       {/* File Tabs Bar */}
       {files.length > 0 && (
-        <div
-          className="flex items-center overflow-x-auto flex-shrink-0"
-          style={{
-            height: '40px',
-            background: '#0d1117',
-            borderBottom: '1px solid var(--bg-border)',
-          }}
-        >
+        <div className="editor-tabs">
           {files.map((file, idx) => {
             const isActive = idx === activeFileIndex;
             return (
@@ -394,12 +387,12 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
                 className="flex items-center gap-1.5 px-3 h-full text-xs font-mono whitespace-nowrap transition-colors flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)]"
                 style={{
                   color: isActive ? 'var(--text-primary)' : 'var(--text-dim)',
-                  background: isActive ? '#0a0a0a' : 'transparent',
+                  background: isActive ? 'var(--bg-base)' : 'transparent',
                   borderTop: isActive
                     ? '2px solid var(--accent-primary)'
                     : '2px solid transparent',
                   borderRight: '1px solid var(--bg-border)',
-                  borderBottom: isActive ? '1px solid #0a0a0a' : 'none',
+                  borderBottom: isActive ? '1px solid var(--bg-base)' : 'none',
                   borderLeft: 'none',
                   marginBottom: isActive ? '-1px' : '0',
                 }}
