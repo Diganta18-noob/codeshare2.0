@@ -167,13 +167,13 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 2a10 10 0 0 1 7.54 16.59l-1.42-1.42A8 8 0 1 0 6.08 14H8v2H3v-5h2v2.42A9.96 9.96 0 0 1 12 2zm1 6v3.59l2.71 2.71-1.42 1.42L11 11V8h2z" />
           </svg>
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Gemini AI Assistant</span>
+          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>AI Code Assistant</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowKeyInput((p) => !p)}
             className={`output-clear-btn p-1 ${apiKey ? 'text-purple-400' : 'text-amber-400 animate-pulse'}`}
-            title="Configure Gemini API Key"
+            title="Configure Groq or Gemini API Key"
           >
             🔑
           </button>
@@ -190,12 +190,12 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
       {showKeyInput && (
         <div className="p-3 border-b flex flex-col gap-2 bg-slate-900/90 text-xs" style={{ borderColor: 'var(--bg-border)' }}>
           <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-            Gemini API Key (Saved in Local Storage)
+            Groq / Gemini API Key (Saved in Local Storage)
           </label>
           <div className="flex gap-1.5">
             <input
               type="password"
-              placeholder="AIzaSy..."
+              placeholder="gsk_... or AIzaSy..."
               value={apiKey}
               onChange={(e) => saveApiKey(e.target.value)}
               className="chat-input flex-1 py-1 px-2 text-xs font-mono"
@@ -210,9 +210,10 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
             )}
           </div>
           {savedKeySuccess && <span className="text-[10px] text-emerald-400">Key saved!</span>}
-          <span className="text-[9px] text-slate-500">
-            Get your free API key at <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-purple-400 underline">aistudio.google.com</a>
-          </span>
+          <div className="flex justify-between text-[9px] text-slate-500">
+            <span>Groq Key: <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-purple-400 underline">console.groq.com</a></span>
+            <span>Gemini Key: <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-purple-400 underline">aistudio.google.com</a></span>
+          </div>
         </div>
       )}
 
