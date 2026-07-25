@@ -19,27 +19,34 @@ const GEMINI_MODELS = [
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
+    const { prompt, code, language, action, provider, model: reqModel, baseUrl: reqBaseUrl } = body;
+
     const apiKey =
       body.apiKey ||
       request.headers.get('x-ai-api-key') ||
       request.headers.get('x-gemini-api-key') ||
+      process.env.OMNIROUTE_API_KEY ||
       process.env.GROQ_API_KEY ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
-      process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      process.env.OPENAI_API_KEY;
 
-    if (!apiKey) {
+    const baseUrl =
+      reqBaseUrl ||
+      process.env.OMNIROUTE_BASE_URL ||
+      process.env.OPENAI_BASE_URL ||
+      (provider === 'omniroute' ? 'http://localhost:20128/v1' : '');
+
+    if (!apiKey && !baseUrl && provider !== 'omniroute') {
       return NextResponse.json(
         {
           success: false,
           error:
-            'API key is not configured. Please enter your Groq API Key (starts with gsk_) or Gemini API Key in the AI Assistant settings, or set GROQ_API_KEY / GEMINI_API_KEY in Vercel.',
+            'API key or OmniRoute URL is not configured. Please enter your OmniRoute URL, Groq API Key (gsk_), or Gemini API Key in the AI Assistant settings.',
         },
         { status: 400 }
       );
     }
-
-    const { prompt, code, language, action } = body;
 
     if (!prompt && !action) {
       return NextResponse.json(
@@ -62,13 +69,69 @@ export async function POST(request: NextRequest) {
       finalPrompt = `Code context (${language}):\n\`\`\`${language}\n${code}\n\`\`\`\n\nUser Request: ${prompt}`;
     }
 
-    const isGroq = apiKey.startsWith('gsk_') || Boolean(process.env.GROQ_API_KEY && !apiKey.startsWith('AIza'));
+    // --- 1. OMNIROUTE / CUSTOM OPENAI COMPATIBLE GATEWAY ---
+    if (baseUrl || provider === 'omniroute') {
+      const targetBase = (baseUrl || 'http://localhost:20128/v1').replace(/\/$/, '');
+      const endpoint = targetBase.endsWith('/chat/completions')
+        ? targetBase
+        : `${targetBase}/chat/completions`;
 
-    // --- 1. GROQ PROVIDER EXECUTION ---
+      const targetModel = reqModel || process.env.OMNIROUTE_MODEL || 'llama-3.3-70b-versatile';
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey || 'omniroute'}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: targetModel,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert AI software engineer assistant.',
+              },
+              {
+                role: 'user',
+                content: finalPrompt,
+              },
+            ],
+            temperature: 0.2,
+            max_tokens: 2048,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const reply =
+            data.choices?.[0]?.message?.content ||
+            data.choices?.[0]?.text ||
+            'No response generated from OmniRoute.';
+          return NextResponse.json({ success: true, response: reply, provider: 'omniroute', model: targetModel });
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          const omniErr = errorData.error?.message || `OmniRoute endpoint returned HTTP ${response.status}`;
+          console.warn(`[OmniRoute AI] Request failed:`, omniErr);
+          return NextResponse.json({ success: false, error: omniErr }, { status: 500 });
+        }
+      } catch (err: any) {
+        console.error('[OmniRoute AI] Fetch error:', err.message);
+        return NextResponse.json(
+          { success: false, error: `Failed to connect to OmniRoute gateway at ${endpoint}: ${err.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    const isGroq = apiKey?.startsWith('gsk_') || Boolean(process.env.GROQ_API_KEY && !apiKey?.startsWith('AIza'));
+
+    // --- 2. GROQ PROVIDER EXECUTION ---
     if (isGroq) {
       let lastGroqError = '';
+      const groqModels = reqModel ? [reqModel, ...GROQ_MODELS] : GROQ_MODELS;
 
-      for (const model of GROQ_MODELS) {
+      for (const model of groqModels) {
         try {
           const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -113,10 +176,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --- 2. GEMINI PROVIDER EXECUTION ---
+    // --- 3. GEMINI PROVIDER EXECUTION ---
     let lastGeminiError = '';
+    const geminiModels = reqModel ? [reqModel, ...GEMINI_MODELS] : GEMINI_MODELS;
 
-    for (const model of GEMINI_MODELS) {
+    for (const model of geminiModels) {
       try {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 

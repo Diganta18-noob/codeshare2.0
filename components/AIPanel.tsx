@@ -43,23 +43,49 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
   }, [isVisible]);
 
   const [apiKey, setApiKey] = useState('');
+  const [provider, setProvider] = useState<'auto' | 'omniroute' | 'groq' | 'gemini'>('auto');
+  const [omnirouteUrl, setOmnirouteUrl] = useState('http://localhost:20128/v1');
+  const [omnirouteModel, setOmnirouteModel] = useState('llama-3.3-70b-versatile');
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [savedKeySuccess, setSavedKeySuccess] = useState(false);
 
   useEffect(() => {
     const storedKey = localStorage.getItem('codeshare_gemini_api_key');
+    const storedProvider = localStorage.getItem('codeshare_ai_provider') as any;
+    const storedUrl = localStorage.getItem('codeshare_omniroute_url');
+    const storedModel = localStorage.getItem('codeshare_omniroute_model');
+
     if (storedKey) setApiKey(storedKey);
+    if (storedProvider) setProvider(storedProvider);
+    if (storedUrl) setOmnirouteUrl(storedUrl);
+    if (storedModel) setOmnirouteModel(storedModel);
   }, []);
 
-  const saveApiKey = (key: string) => {
-    setApiKey(key);
-    if (key.trim()) {
-      localStorage.setItem('codeshare_gemini_api_key', key.trim());
-      setSavedKeySuccess(true);
-      setTimeout(() => setSavedKeySuccess(false), 2000);
-    } else {
-      localStorage.removeItem('codeshare_gemini_api_key');
-    }
+  const saveSettings = (
+    newKey?: string,
+    newProvider?: 'auto' | 'omniroute' | 'groq' | 'gemini',
+    newUrl?: string,
+    newModel?: string
+  ) => {
+    const targetKey = newKey !== undefined ? newKey : apiKey;
+    const targetProvider = newProvider !== undefined ? newProvider : provider;
+    const targetUrl = newUrl !== undefined ? newUrl : omnirouteUrl;
+    const targetModel = newModel !== undefined ? newModel : omnirouteModel;
+
+    setApiKey(targetKey);
+    setProvider(targetProvider);
+    setOmnirouteUrl(targetUrl);
+    setOmnirouteModel(targetModel);
+
+    if (targetKey.trim()) localStorage.setItem('codeshare_gemini_api_key', targetKey.trim());
+    else localStorage.removeItem('codeshare_gemini_api_key');
+
+    localStorage.setItem('codeshare_ai_provider', targetProvider);
+    localStorage.setItem('codeshare_omniroute_url', targetUrl);
+    localStorage.setItem('codeshare_omniroute_model', targetModel);
+
+    setSavedKeySuccess(true);
+    setTimeout(() => setSavedKeySuccess(false), 2000);
   };
 
   const handleSend = useCallback(async (promptText?: string, actionType?: string) => {
@@ -80,6 +106,10 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
 
     try {
       const storedKey = localStorage.getItem('codeshare_gemini_api_key') || apiKey;
+      const storedProvider = localStorage.getItem('codeshare_ai_provider') || provider;
+      const storedUrl = localStorage.getItem('codeshare_omniroute_url') || omnirouteUrl;
+      const storedModel = localStorage.getItem('codeshare_omniroute_model') || omnirouteModel;
+
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,6 +119,9 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
           language,
           action: actionType || '',
           apiKey: storedKey || undefined,
+          provider: storedProvider,
+          baseUrl: storedProvider === 'omniroute' || storedUrl ? storedUrl : undefined,
+          model: storedProvider === 'omniroute' ? storedModel : undefined,
         }),
       });
 
@@ -122,7 +155,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, code, language, apiKey]);
+  }, [input, code, language, apiKey, provider, omnirouteUrl, omnirouteModel]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -186,33 +219,85 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
         </div>
       </div>
 
-      {/* API Key Drawer */}
+      {/* API & Provider Settings Drawer */}
       {showKeyInput && (
-        <div className="p-3 border-b flex flex-col gap-2 bg-slate-900/90 text-xs" style={{ borderColor: 'var(--bg-border)' }}>
-          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-            Groq / Gemini API Key (Saved in Local Storage)
-          </label>
-          <div className="flex gap-1.5">
-            <input
-              type="password"
-              placeholder="gsk_... or AIzaSy..."
-              value={apiKey}
-              onChange={(e) => saveApiKey(e.target.value)}
-              className="chat-input flex-1 py-1 px-2 text-xs font-mono"
-            />
-            {apiKey && (
-              <button
-                onClick={() => saveApiKey('')}
-                className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-[10px]"
-              >
-                Clear
-              </button>
-            )}
+        <div className="p-3 border-b flex flex-col gap-2.5 bg-slate-900/95 text-xs" style={{ borderColor: 'var(--bg-border)' }}>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              AI Provider Mode
+            </label>
+            <select
+              value={provider}
+              onChange={(e) => saveSettings(undefined, e.target.value as any)}
+              className="chat-input py-1 px-2 text-xs font-sans"
+            >
+              <option value="auto">Auto-Detect (Groq / Gemini / OmniRoute)</option>
+              <option value="omniroute">OmniRoute / Custom Gateway (Local or Remote)</option>
+              <option value="groq">Groq AI (gsk_...)</option>
+              <option value="gemini">Google Gemini (AIzaSy...)</option>
+            </select>
           </div>
-          {savedKeySuccess && <span className="text-[10px] text-emerald-400">Key saved!</span>}
-          <div className="flex justify-between text-[9px] text-slate-500">
-            <span>Groq Key: <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-purple-400 underline">console.groq.com</a></span>
-            <span>Gemini Key: <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-purple-400 underline">aistudio.google.com</a></span>
+
+          {/* OmniRoute Options */}
+          {(provider === 'omniroute' || provider === 'auto') && (
+            <div className="flex flex-col gap-2 p-2 rounded bg-white/5 border border-white/10">
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] uppercase font-bold text-cyan-400 tracking-wider">
+                  OmniRoute / Gateway Base URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="http://localhost:20128/v1"
+                  value={omnirouteUrl}
+                  onChange={(e) => saveSettings(undefined, undefined, e.target.value, undefined)}
+                  className="chat-input py-1 px-2 text-xs font-mono"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[9px] uppercase font-bold text-cyan-400 tracking-wider">
+                  Model Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="llama-3.3-70b-versatile, claude-3-7-sonnet, deepseek-r1..."
+                  value={omnirouteModel}
+                  onChange={(e) => saveSettings(undefined, undefined, undefined, e.target.value)}
+                  className="chat-input py-1 px-2 text-xs font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* API Key Input */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              API Key / Auth Token (Optional for Local OmniRoute)
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                type="password"
+                placeholder="gsk_... or sk-... or AIzaSy..."
+                value={apiKey}
+                onChange={(e) => saveSettings(e.target.value)}
+                className="chat-input flex-1 py-1 px-2 text-xs font-mono"
+              />
+              {apiKey && (
+                <button
+                  onClick={() => saveSettings('')}
+                  className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-[10px]"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {savedKeySuccess && <span className="text-[10px] text-emerald-400 font-semibold">Settings saved!</span>}
+
+          <div className="flex flex-col gap-0.5 text-[9px] text-slate-500">
+            <span>🚀 <b>OmniRoute Repo:</b> <a href="https://github.com/diegosouzapw/OmniRoute" target="_blank" rel="noreferrer" className="text-purple-400 underline">diegosouzapw/OmniRoute</a></span>
+            <span>⚡ <b>Groq Key:</b> <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-purple-400 underline">console.groq.com</a></span>
           </div>
         </div>
       )}
