@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { socket } from '@/lib/socket';
+import { gsap } from 'gsap';
 
 interface ChatMessage {
   id: string;
@@ -29,16 +30,22 @@ export default function ChatPanel({ roomId, isVisible, onToggle, onNewMessage }:
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input when panel opens
+  // GSAP slide-in animation on open
   useEffect(() => {
-    if (isVisible) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (isVisible && panelRef.current) {
+      gsap.fromTo(
+        panelRef.current,
+        { x: 320, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
+      );
+      setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isVisible]);
 
@@ -114,7 +121,7 @@ export default function ChatPanel({ roomId, isVisible, onToggle, onNewMessage }:
   if (!isVisible) return null;
 
   return (
-    <div className="chat-panel">
+    <div ref={panelRef} className="chat-panel">
       {/* Header */}
       <div className="chat-panel-header">
         <div className="flex items-center gap-2">

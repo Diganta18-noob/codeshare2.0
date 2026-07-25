@@ -1126,3 +1126,63 @@ body {
     width: 95%;
   }
 }
+
+/* =========================================
+   AURORA MESH & ANIMATION HELPERS
+   ========================================= */
+.aurora-mesh {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.25;
+  will-change: transform;
+}
+
+.aurora-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #8B5CF6 0%, #3B82F6 100%);
+  top: -10%;
+  left: 30%;
+}
+
+.aurora-blob-2 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, #06b6d4 0%, #8B5CF6 100%);
+  top: 40%;
+  right: 10%;
+}
+
+.aurora-blob-3 {
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, #ec4899 0%, #8B5CF6 100%);
+  bottom: -10%;
+  left: 15%;
+}
+
+/* Cursor blink */
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Hero split char styling */
+.hero-char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+

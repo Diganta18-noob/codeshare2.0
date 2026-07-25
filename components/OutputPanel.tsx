@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { gsap } from 'gsap';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,18 @@ export default function OutputPanel({ isVisible, onToggle }: OutputPanelProps) {
 
   const outputRef = useRef<HTMLDivElement>(null);
   const abortRef  = useRef<AbortController | null>(null);
+  const panelRef  = useRef<HTMLDivElement>(null);
+
+  // GSAP Output Panel expansion
+  useEffect(() => {
+    if (isVisible && panelRef.current) {
+      gsap.fromTo(
+        panelRef.current,
+        { height: 0, opacity: 0 },
+        { height: 260, opacity: 1, duration: 0.4, ease: 'power3.out' }
+      );
+    }
+  }, [isVisible]);
 
   // Auto-listen for Ctrl+Enter run events dispatched from EditorWrapper
   useEffect(() => {
@@ -307,7 +320,7 @@ export default function OutputPanel({ isVisible, onToggle }: OutputPanelProps) {
   const canRun = isExecutable(language);
 
   return (
-    <div className="output-panel" style={{ height: 260, minHeight: 160 }}>
+    <div ref={panelRef} className="output-panel" style={{ height: 260, minHeight: 160 }}>
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="output-panel-header">
         <div className="flex items-center gap-3">

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
+import { gsap } from 'gsap';
 
 interface Version {
   _id: string;
@@ -26,6 +27,7 @@ export default function HistoryPanel({ roomId, isOpen, onClose, isReadOnly }: Hi
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { setCode, setFiles, setLanguage, code, files, language } = useEditorStore();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const fetchVersions = async () => {
     setLoading(true);
@@ -45,6 +47,13 @@ export default function HistoryPanel({ roomId, isOpen, onClose, isReadOnly }: Hi
   useEffect(() => {
     if (isOpen) {
       fetchVersions();
+      if (panelRef.current) {
+        gsap.fromTo(
+          panelRef.current,
+          { x: 320, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
+        );
+      }
     }
   }, [isOpen, roomId]);
 
@@ -104,7 +113,7 @@ export default function HistoryPanel({ roomId, isOpen, onClose, isReadOnly }: Hi
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-y-0 right-0 w-80 bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col z-40 animate-fade-in font-sans">
+    <div ref={panelRef} className="absolute inset-y-0 right-0 w-80 bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col z-40 font-sans">
       <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-850">
         <h3 className="text-sm font-bold text-white flex items-center gap-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

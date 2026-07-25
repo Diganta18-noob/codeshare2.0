@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { gsap } from 'gsap';
 
 interface PasswordModalProps {
   roomId: string;
@@ -12,10 +13,36 @@ export default function PasswordModal({ roomId, onSuccess }: PasswordModalProps)
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
+  // Entrance animation
   useEffect(() => {
     inputRef.current?.focus();
+    if (backdropRef.current && modalRef.current) {
+      gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: 0.25 });
+      gsap.fromTo(
+        modalRef.current,
+        { scale: 0.92, opacity: 0, y: 10 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.35, ease: 'back.out(1.5)' }
+      );
+    }
   }, []);
+
+  const triggerErrorShake = () => {
+    if (modalRef.current) {
+      gsap.to(modalRef.current, {
+        x: -8,
+        duration: 0.06,
+        repeat: 5,
+        yoyo: true,
+        ease: 'sine.inOut',
+        onComplete: () => {
+          gsap.set(modalRef.current, { x: 0 });
+        },
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,18 +65,20 @@ export default function PasswordModal({ roomId, onSuccess }: PasswordModalProps)
       } else {
         setError(data.error || 'Incorrect password');
         setPassword('');
+        triggerErrorShake();
         inputRef.current?.focus();
       }
     } catch (err) {
       setError('Failed to verify password');
+      triggerErrorShake();
     } finally {
       setIsVerifying(false);
     }
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-content" style={{ maxWidth: '400px' }}>
+    <div ref={backdropRef} className="modal-backdrop" onClick={(e) => e.stopPropagation()}>
+      <div ref={modalRef} className="modal-content" style={{ maxWidth: '400px' }}>
         {/* Lock Icon */}
         <div className="flex justify-center mb-4">
           <div

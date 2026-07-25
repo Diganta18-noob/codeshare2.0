@@ -5,6 +5,7 @@ import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import { socket } from '@/lib/socket';
 import { useEditorStore } from '@/store/editorStore';
 import type { editor } from 'monaco-editor';
+import { gsap } from 'gsap';
 
 interface EditorProps {
   roomId: string;
@@ -56,6 +57,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
 
   const isRemoteChange = useRef(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<any>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
   const hasPendingSave = useRef(false);
@@ -299,6 +301,14 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
+    if (containerRef.current) {
+      gsap.fromTo(
+        containerRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.5, ease: 'power2.out' }
+      );
+    }
+
     // Define custom theme
     monaco.editor.defineTheme('codeshare-dark', {
       base: 'vs-dark',
@@ -374,7 +384,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
       {/* File Tabs Bar */}
       {files.length > 0 && (
         <div className="editor-tabs">

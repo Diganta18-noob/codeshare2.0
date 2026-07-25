@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
+import GSAPProvider from '@/components/providers/GSAPProvider';
+import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider';
 
 export const metadata: Metadata = {
   title: 'CodeShare — Real-time Code Sharing',
@@ -15,7 +17,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <GSAPProvider>
+          <SmoothScrollProvider>
+            {children}
+          </SmoothScrollProvider>
+        </GSAPProvider>
+      </body>
     </html>
   );
 }
+

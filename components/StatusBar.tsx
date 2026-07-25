@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { getLabelForLanguage } from '@/lib/languages';
+import { gsap } from 'gsap';
 
 interface StatusBarProps {
   roomId: string;
@@ -15,6 +16,42 @@ export default function StatusBar({ roomId }: StatusBarProps) {
   const langLabel = getLabelForLanguage(language);
   const [timeAgo, setTimeAgo] = useState<string>('');
 
+  const langRef = useRef<HTMLDivElement>(null);
+  const charRef = useRef<HTMLSpanElement>(null);
+  const lineRef = useRef<HTMLSpanElement>(null);
+
+  // Color flash on language change
+  useEffect(() => {
+    if (langRef.current) {
+      gsap.fromTo(
+        langRef.current,
+        { color: '#22c55e', scale: 1.15 },
+        { color: 'var(--accent-primary)', scale: 1, duration: 0.4, ease: 'power2.out' }
+      );
+    }
+  }, [language]);
+
+  // Pulse effect on char / line count changes
+  useEffect(() => {
+    if (charRef.current) {
+      gsap.fromTo(
+        charRef.current,
+        { scale: 1.1 },
+        { scale: 1, duration: 0.2, ease: 'power1.out' }
+      );
+    }
+  }, [charCount]);
+
+  useEffect(() => {
+    if (lineRef.current) {
+      gsap.fromTo(
+        lineRef.current,
+        { scale: 1.1 },
+        { scale: 1, duration: 0.2, ease: 'power1.out' }
+      );
+    }
+  }, [lineCount]);
+
   useEffect(() => {
     if (!createdAt) return;
 
@@ -22,24 +59,24 @@ export default function StatusBar({ roomId }: StatusBarProps) {
       const createdDate = new Date(createdAt);
       const diffMs = Date.now() - createdDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
-      
+
       if (diffMins < 1) {
         setTimeAgo('Created just now');
         return;
       }
-      
+
       const diffHours = Math.floor(diffMins / 60);
       if (diffHours < 1) {
         setTimeAgo(`Created ${diffMins}m ago`);
         return;
       }
-      
+
       const diffDays = Math.floor(diffHours / 24);
       if (diffDays < 1) {
         setTimeAgo(`Created ${diffHours}h ago`);
         return;
       }
-      
+
       setTimeAgo(`Created ${diffDays}d ago`);
     };
 
@@ -62,20 +99,20 @@ export default function StatusBar({ roomId }: StatusBarProps) {
 
       {/* Characters */}
       <div className="status-bar-item status-bar-hide-tablet">
-        <span>{charCount.toLocaleString()} chars</span>
+        <span ref={charRef} className="inline-block">{charCount.toLocaleString()} chars</span>
       </div>
 
       <div className="status-bar-separator status-bar-hide-tablet" />
 
       {/* Lines */}
       <div className="status-bar-item">
-        <span>{lineCount} lines</span>
+        <span ref={lineRef} className="inline-block">{lineCount} lines</span>
       </div>
 
       <div className="status-bar-separator" />
 
       {/* Language */}
-      <div className="status-bar-item font-semibold" style={{ color: 'var(--accent-primary)' }}>
+      <div ref={langRef} className="status-bar-item font-semibold inline-block" style={{ color: 'var(--accent-primary)' }}>
         {langLabel}
       </div>
 

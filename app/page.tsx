@@ -1,12 +1,27 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 export default function HomePage() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [customName, setCustomName] = useState('');
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const heroTitleRef = useRef<HTMLHeadingElement>(null);
+  const heroSubRef = useRef<HTMLParagraphElement>(null);
+  const ctaBoxRef = useRef<HTMLDivElement>(null);
+  const randomBtnRef = useRef<HTMLDivElement>(null);
+  const mockEditorRef = useRef<HTMLDivElement>(null);
+  const codeLinesRef = useRef<HTMLDivElement>(null);
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const blob1Ref = useRef<HTMLDivElement>(null);
+  const blob2Ref = useRef<HTMLDivElement>(null);
+  const blob3Ref = useRef<HTMLDivElement>(null);
+  const gridPatternRef = useRef<HTMLDivElement>(null);
 
   const mockCodeLines = [
     'const codeshare = require("codeshare");',
@@ -17,6 +32,218 @@ export default function HomePage() {
     '  // Live sync active... 🚀',
     '});'
   ];
+
+  // GSAP Animations setup
+  useEffect(() => {
+    gsap.registerPlugin(ScrollTrigger);
+
+    const ctx = gsap.context(() => {
+      // 1. Aurora Blobs Floating Loop
+      if (blob1Ref.current && blob2Ref.current && blob3Ref.current) {
+        gsap.to(blob1Ref.current, {
+          x: 60,
+          y: 40,
+          scale: 1.1,
+          duration: 8,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
+        gsap.to(blob2Ref.current, {
+          x: -50,
+          y: -30,
+          scale: 0.9,
+          duration: 10,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
+        gsap.to(blob3Ref.current, {
+          x: 40,
+          y: -60,
+          scale: 1.15,
+          duration: 9,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
+      }
+
+      // 2. Hero Headline Character-by-Character Stagger Reveal (StringTune style)
+      const chars = heroTitleRef.current?.querySelectorAll('.hero-char');
+      if (chars && chars.length > 0) {
+        gsap.fromTo(
+          chars,
+          { opacity: 0, y: 25, rotateX: -45 },
+          {
+            opacity: 1,
+            y: 0,
+            rotateX: 0,
+            duration: 0.6,
+            stagger: 0.025,
+            ease: 'power3.out',
+            delay: 0.1,
+          }
+        );
+      }
+
+      // 3. Subtitle Fade & Upward Float
+      if (heroSubRef.current) {
+        gsap.fromTo(
+          heroSubRef.current,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.7, delay: 0.45, ease: 'power3.out' }
+        );
+      }
+
+      // 4. CTA Input & Random Button Spring Reveal
+      if (ctaBoxRef.current) {
+        gsap.fromTo(
+          ctaBoxRef.current,
+          { opacity: 0, y: 30, scale: 0.96 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.8, delay: 0.6, ease: 'back.out(1.4)' }
+        );
+      }
+      if (randomBtnRef.current) {
+        gsap.fromTo(
+          randomBtnRef.current,
+          { opacity: 0, y: 15 },
+          { opacity: 1, y: 0, duration: 0.6, delay: 0.75, ease: 'power3.out' }
+        );
+      }
+
+      // 5. Mock Editor Window Entrance with 3D perspective
+      if (mockEditorRef.current) {
+        gsap.fromTo(
+          mockEditorRef.current,
+          { opacity: 0, y: 40, rotateX: 12, scale: 0.94 },
+          {
+            opacity: 1,
+            y: 0,
+            rotateX: 0,
+            scale: 1,
+            duration: 1,
+            delay: 0.3,
+            ease: 'power3.out',
+          }
+        );
+      }
+
+      // 6. Code Lines Type-in / Staggered Line Reveal
+      const lines = codeLinesRef.current?.querySelectorAll('.mock-code-line');
+      if (lines && lines.length > 0) {
+        gsap.fromTo(
+          lines,
+          { opacity: 0, x: -10 },
+          {
+            opacity: 1,
+            x: 0,
+            duration: 0.4,
+            stagger: 0.12,
+            delay: 0.8,
+            ease: 'power2.out',
+          }
+        );
+      }
+
+      // 7. Fake Collaborative Cursors Smooth GSAP Pulse Timeline
+      const cursors = mockEditorRef.current?.querySelectorAll('.fake-cursor-pulse');
+      if (cursors && cursors.length > 0) {
+        gsap.to(cursors, {
+          opacity: 0.2,
+          duration: 0.7,
+          repeat: -1,
+          yoyo: true,
+          ease: 'power1.inOut',
+        });
+      }
+
+      // 8. ScrollTrigger Stagger for Feature Cards
+      const cardElements = cardsRef.current?.querySelectorAll('.glass-card');
+      if (cardElements && cardElements.length > 0) {
+        gsap.fromTo(
+          cardElements,
+          { opacity: 0, y: 40, scale: 0.95 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.6,
+            stagger: 0.15,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: cardsRef.current,
+              start: 'top 85%',
+            },
+          }
+        );
+      }
+    }, containerRef);
+
+    // Mousemove parallax shift on grid pattern background
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!gridPatternRef.current) return;
+      const { clientX, clientY } = e;
+      const xPercent = (clientX / window.innerWidth - 0.5) * 15;
+      const yPercent = (clientY / window.innerHeight - 0.5) * 15;
+      gsap.to(gridPatternRef.current, {
+        x: xPercent,
+        y: yPercent,
+        duration: 0.8,
+        ease: 'power2.out',
+      });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      ctx.revert();
+    };
+  }, []);
+
+  // 3D Perspective Tilt on Card Hover
+  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    const rotateX = (-y / rect.height) * 12;
+    const rotateY = (x / rect.width) * 12;
+
+    gsap.to(card, {
+      rotateX: rotateX,
+      rotateY: rotateY,
+      transformPerspective: 1000,
+      scale: 1.02,
+      duration: 0.3,
+      ease: 'power2.out',
+    });
+  };
+
+  const handleCardMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    gsap.to(card, {
+      rotateX: 0,
+      rotateY: 0,
+      scale: 1,
+      duration: 0.5,
+      ease: 'power3.out',
+    });
+  };
+
+  // Icon Spin Pop on Hover
+  const handleIconHover = (e: React.MouseEvent<HTMLDivElement>) => {
+    const icon = e.currentTarget;
+    gsap.to(icon, {
+      rotate: 15,
+      scale: 1.15,
+      duration: 0.25,
+      yoyo: true,
+      repeat: 1,
+      ease: 'back.out(2)',
+    });
+  };
 
   const handleCreatePad = async () => {
     setIsCreating(true);
@@ -38,11 +265,30 @@ export default function HomePage() {
     }
   };
 
+  // Helper to split text into character spans for GSAP stagger
+  const splitTextToChars = (text: string) => {
+    return text.split('').map((char, index) => (
+      <span key={index} className="hero-char">
+        {char === ' ' ? '\u00A0' : char}
+      </span>
+    ));
+  };
+
   return (
-    <div className="grid-pattern relative flex min-h-screen lg:h-screen flex-col justify-between overflow-y-auto lg:overflow-hidden overflow-x-hidden">
-      {/* Background glow effects */}
-      <div className="radial-glow" />
-      <div className="radial-glow-secondary" />
+    <div
+      ref={containerRef}
+      className="relative flex min-h-screen lg:h-screen flex-col justify-between overflow-y-auto lg:overflow-hidden overflow-x-hidden"
+    >
+      {/* Parallax Grid Background */}
+      <div ref={gridPatternRef} className="grid-pattern absolute inset-0 pointer-events-none" />
+
+      {/* Live Aurora Mesh */}
+      <div className="aurora-mesh">
+        <div ref={blob1Ref} className="aurora-blob aurora-blob-1" />
+        <div ref={blob2Ref} className="aurora-blob aurora-blob-2" />
+        <div ref={blob3Ref} className="aurora-blob aurora-blob-3" />
+      </div>
+
       <div className="noise-overlay" />
 
       {/* Header Navigation */}
@@ -76,19 +322,25 @@ export default function HomePage() {
           
           {/* Left Column: CTA & Info */}
           <div className="flex flex-col lg:col-span-6">
-            <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl font-sans leading-tight">
-              Share code in{' '}
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-500 bg-clip-text text-transparent">
-                real-time
+            <h1
+              ref={heroTitleRef}
+              className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl font-sans leading-tight"
+            >
+              {splitTextToChars('Share code in ')}
+              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-500 bg-clip-text text-transparent inline-block">
+                {splitTextToChars('real-time')}
               </span>
-              .
+              {splitTextToChars('.')}
             </h1>
-            <p className="mt-3 text-sm sm:text-base text-[var(--text-secondary)] max-w-lg leading-relaxed">
+            <p
+              ref={heroSubRef}
+              className="mt-3 text-sm sm:text-base text-[var(--text-secondary)] max-w-lg leading-relaxed"
+            >
               No registration, no configuration, no setup. Type your code, share your unique room URL, and write code collaboratively with peers instantly.
             </p>
 
             {/* Custom Join Box */}
-            <div className="mt-8 w-full max-w-md">
+            <div ref={ctaBoxRef} className="mt-8 w-full max-w-md">
               <form onSubmit={handleCustomJoin} className="flex flex-col gap-3">
                 <div className="group relative flex items-center rounded-xl border border-[var(--bg-border)] bg-[rgba(11,15,25,0.8)] p-1.5 focus-within:border-[var(--accent-primary)] focus-within:ring-2 focus-within:ring-[var(--accent-primary-glow)] transition-all">
                   <span className="flex items-center gap-2 pl-4 text-xs font-mono text-[var(--text-dim)] select-none">
@@ -96,6 +348,7 @@ export default function HomePage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
                     codeshare/
+                    <span className="cursor-blink text-[var(--accent-primary)] font-bold">|</span>
                   </span>
                   <input
                     type="text"
@@ -125,7 +378,7 @@ export default function HomePage() {
             </div>
 
             {/* Random Room Button */}
-            <div className="mt-4">
+            <div ref={randomBtnRef} className="mt-4">
               <button
                 onClick={handleCreatePad}
                 disabled={isCreating}
@@ -150,7 +403,7 @@ export default function HomePage() {
 
           {/* Right Column: Premium Mock Collaboration Editor */}
           <div className="relative lg:col-span-6 w-full max-w-xl mx-auto">
-            <div className="mock-editor-window">
+            <div ref={mockEditorRef} className="mock-editor-window">
               {/* Header */}
               <div className="mock-editor-header justify-between">
                 <div className="flex items-center">
@@ -166,9 +419,9 @@ export default function HomePage() {
               </div>
               
               {/* Code Panel */}
-              <div className="p-5 font-mono text-xs leading-relaxed text-[var(--text-secondary)] overflow-hidden min-h-[180px]">
+              <div ref={codeLinesRef} className="p-5 font-mono text-xs leading-relaxed text-[var(--text-secondary)] overflow-hidden min-h-[180px]">
                 {mockCodeLines.map((line, idx) => (
-                  <div key={idx} className="flex relative">
+                  <div key={idx} className="mock-code-line flex relative">
                     <span className="w-8 text-[var(--text-dim)] select-none text-right pr-4 text-[10px]">{idx + 1}</span>
                     <span className="flex-1 whitespace-pre">
                       {line}
@@ -178,7 +431,7 @@ export default function HomePage() {
                           <span className="absolute -top-4 left-0 rounded bg-indigo-500 text-[8px] text-white px-1 py-0.5 whitespace-nowrap font-sans font-bold z-10 shadow">
                             diganta
                           </span>
-                          <span className="border-l-2 border-indigo-500 h-3 animate-pulse inline-block" />
+                          <span className="fake-cursor-pulse border-l-2 border-indigo-500 h-3 inline-block" />
                         </span>
                       )}
                       {idx === 6 && (
@@ -186,7 +439,7 @@ export default function HomePage() {
                           <span className="absolute -top-4 left-0 rounded bg-purple-500 text-[8px] text-white px-1 py-0.5 whitespace-nowrap font-sans font-bold z-10 shadow">
                             guest
                           </span>
-                          <span className="border-l-2 border-purple-500 h-3 animate-pulse inline-block" />
+                          <span className="fake-cursor-pulse border-l-2 border-purple-500 h-3 inline-block" />
                         </span>
                       )}
                     </span>
@@ -195,18 +448,25 @@ export default function HomePage() {
               </div>
             </div>
             {/* Ambient card background glow */}
-            <div className="absolute -inset-1 -z-10 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 opacity-20 blur-xl" />
+            <div className="absolute -inset-1 -z-10 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 opacity-20 blur-xl pointer-events-none" />
           </div>
 
         </div>
       </main>
 
-      {/* Feature Grid Section - More compact to fit 100vh */}
+      {/* Feature Grid Section */}
       <section className="relative z-10 mx-auto w-full max-w-7xl px-6 lg:px-8 border-t border-[rgba(255,255,255,0.03)] py-4 flex-shrink-0">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div ref={cardsRef} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Collab feature */}
-          <div className="glass-card p-4 flex flex-col gap-2">
-            <div className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+          <div
+            onMouseMove={handleCardMouseMove}
+            onMouseLeave={handleCardMouseLeave}
+            className="glass-card p-4 flex flex-col gap-2 cursor-pointer transition-transform style-preserve-3d"
+          >
+            <div
+              onMouseEnter={handleIconHover}
+              className="h-8 w-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0"
+            >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
@@ -218,8 +478,15 @@ export default function HomePage() {
           </div>
 
           {/* Persistence feature */}
-          <div className="glass-card p-4 flex flex-col gap-2">
-            <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0">
+          <div
+            onMouseMove={handleCardMouseMove}
+            onMouseLeave={handleCardMouseLeave}
+            className="glass-card p-4 flex flex-col gap-2 cursor-pointer transition-transform style-preserve-3d"
+          >
+            <div
+              onMouseEnter={handleIconHover}
+              className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0"
+            >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
@@ -231,8 +498,15 @@ export default function HomePage() {
           </div>
 
           {/* Tech stack feature */}
-          <div className="glass-card p-4 flex flex-col gap-2 sm:col-span-2 lg:col-span-1">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 flex-shrink-0">
+          <div
+            onMouseMove={handleCardMouseMove}
+            onMouseLeave={handleCardMouseLeave}
+            className="glass-card p-4 flex flex-col gap-2 sm:col-span-2 lg:col-span-1 cursor-pointer transition-transform style-preserve-3d"
+          >
+            <div
+              onMouseEnter={handleIconHover}
+              className="h-8 w-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 flex-shrink-0"
+            >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>

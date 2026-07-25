@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
 
 interface KeybindingsModalProps {
   onClose: () => void;
@@ -25,9 +26,19 @@ const KEYBINDINGS = [
 ];
 
 export default function KeybindingsModal({ onClose }: KeybindingsModalProps) {
+  const backdropRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (backdropRef.current && modalRef.current) {
+      gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: 0.25 });
+      gsap.fromTo(
+        modalRef.current,
+        { scale: 0.92, opacity: 0, y: 10 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.35, ease: 'back.out(1.5)' }
+      );
+    }
+
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -42,7 +53,7 @@ export default function KeybindingsModal({ onClose }: KeybindingsModalProps) {
   };
 
   return (
-    <div className="modal-backdrop" onClick={handleBackdropClick}>
+    <div ref={backdropRef} className="modal-backdrop" onClick={handleBackdropClick}>
       <div className="modal-content" ref={modalRef}>
         {/* Header */}
         <div className="flex items-center justify-between mb-5">

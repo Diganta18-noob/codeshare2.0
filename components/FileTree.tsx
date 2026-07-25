@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 import { getLanguageForExtension } from '@/lib/languages';
+import { gsap } from 'gsap';
 
 interface FileTreeProps {
   roomId: string;
@@ -17,6 +18,29 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
   const [isAdding, setIsAdding] = useState(false);
   const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const filesListRef = useRef<HTMLDivElement>(null);
+
+  // GSAP Sidebar Entrance & File Item Stagger
+  useEffect(() => {
+    if (isVisible && sidebarRef.current) {
+      gsap.fromTo(
+        sidebarRef.current,
+        { width: 0, opacity: 0 },
+        { width: 260, opacity: 1, duration: 0.35, ease: 'power3.out' }
+      );
+
+      const items = filesListRef.current?.querySelectorAll('.file-item');
+      if (items && items.length > 0) {
+        gsap.fromTo(
+          items,
+          { y: 6, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.3, stagger: 0.05, ease: 'power2.out', delay: 0.15 }
+        );
+      }
+    }
+  }, [isVisible, files.length]);
 
   const handleCreateFile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +131,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
 
       {/* Sidebar */}
       <div
+        ref={sidebarRef}
         className={`sidebar ${isVisible ? 'sidebar-open' : ''}`}
         style={{ display: isVisible ? undefined : 'none' }}
         role="complementary"
@@ -155,7 +180,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
         )}
 
         {/* Files List */}
-        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
+        <div ref={filesListRef} className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
           {files.map((file, idx) => {
             const isActive = idx === activeFileIndex;
             const isRenaming = idx === renamingIndex;
@@ -164,7 +189,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
               <div
                 key={file.name + '-' + idx}
                 onClick={() => !isRenaming && handleFileClick(idx)}
-                className="flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer group text-xs transition-colors"
+                className="file-item flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer group text-xs transition-colors"
                 style={{
                   background: isActive ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
                   color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',

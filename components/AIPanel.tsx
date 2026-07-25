@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
+import { gsap } from 'gsap';
 
 interface AIMessage {
   id: string;
@@ -24,14 +25,20 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    if (isVisible) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (isVisible && panelRef.current) {
+      gsap.fromTo(
+        panelRef.current,
+        { x: 320, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
+      );
+      setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isVisible]);
 
@@ -131,7 +138,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="chat-panel" style={{ borderLeft: '1px solid var(--bg-border)' }}>
+    <div ref={panelRef} className="chat-panel" style={{ borderLeft: '1px solid var(--bg-border)' }}>
       {/* Header */}
       <div className="chat-panel-header">
         <div className="flex items-center gap-2">
