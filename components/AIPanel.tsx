@@ -42,6 +42,26 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
     }
   }, [isVisible]);
 
+  const [apiKey, setApiKey] = useState('');
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [savedKeySuccess, setSavedKeySuccess] = useState(false);
+
+  useEffect(() => {
+    const storedKey = localStorage.getItem('codeshare_gemini_api_key');
+    if (storedKey) setApiKey(storedKey);
+  }, []);
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    if (key.trim()) {
+      localStorage.setItem('codeshare_gemini_api_key', key.trim());
+      setSavedKeySuccess(true);
+      setTimeout(() => setSavedKeySuccess(false), 2000);
+    } else {
+      localStorage.removeItem('codeshare_gemini_api_key');
+    }
+  };
+
   const handleSend = useCallback(async (promptText?: string, actionType?: string) => {
     const queryText = promptText || input.trim();
     if (!queryText && !actionType) return;
@@ -59,6 +79,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
     setIsLoading(true);
 
     try {
+      const storedKey = localStorage.getItem('codeshare_gemini_api_key') || apiKey;
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -67,6 +88,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
           code,
           language,
           action: actionType || '',
+          apiKey: storedKey || undefined,
         }),
       });
 
@@ -100,7 +122,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, code, language]);
+  }, [input, code, language, apiKey]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -147,13 +169,52 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
           </svg>
           <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Gemini AI Assistant</span>
         </div>
-        <button onClick={onToggle} className="output-clear-btn" title="Close AI Assistant">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowKeyInput((p) => !p)}
+            className={`output-clear-btn p-1 ${apiKey ? 'text-purple-400' : 'text-amber-400 animate-pulse'}`}
+            title="Configure Gemini API Key"
+          >
+            🔑
+          </button>
+          <button onClick={onToggle} className="output-clear-btn" title="Close AI Assistant">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {/* API Key Drawer */}
+      {showKeyInput && (
+        <div className="p-3 border-b flex flex-col gap-2 bg-slate-900/90 text-xs" style={{ borderColor: 'var(--bg-border)' }}>
+          <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+            Gemini API Key (Saved in Local Storage)
+          </label>
+          <div className="flex gap-1.5">
+            <input
+              type="password"
+              placeholder="AIzaSy..."
+              value={apiKey}
+              onChange={(e) => saveApiKey(e.target.value)}
+              className="chat-input flex-1 py-1 px-2 text-xs font-mono"
+            />
+            {apiKey && (
+              <button
+                onClick={() => saveApiKey('')}
+                className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-[10px]"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {savedKeySuccess && <span className="text-[10px] text-emerald-400">Key saved!</span>}
+          <span className="text-[9px] text-slate-500">
+            Get your free API key at <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-purple-400 underline">aistudio.google.com</a>
+          </span>
+        </div>
+      )}
 
       {/* Quick Action Chips */}
       <div className="p-3 border-b flex flex-wrap gap-1.5" style={{ borderColor: 'var(--bg-border)' }}>
@@ -221,6 +282,15 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
             >
               {msg.text}
             </div>
+
+            {msg.sender === 'ai' && msg.text.includes('API key') && (
+              <button
+                onClick={() => setShowKeyInput(true)}
+                className="mt-2 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-amber-500/30"
+              >
+                🔑 Click to Enter Gemini API Key
+              </button>
+            )}
 
             {msg.sender === 'ai' && extractCode(msg.text) && (
               <button

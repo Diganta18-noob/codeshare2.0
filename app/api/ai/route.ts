@@ -10,7 +10,10 @@ const GEMINI_MODELS = [
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json().catch(() => ({}));
     const apiKey =
+      body.apiKey ||
+      request.headers.get('x-gemini-api-key') ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
       process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -20,13 +23,13 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error:
-            'Gemini API key is not configured. Please add GEMINI_API_KEY to Environment Variables in Vercel settings (or .env.local locally).',
+            'Gemini API key is not configured. Add GEMINI_API_KEY to Vercel settings or enter your key in the AI Assistant settings.',
         },
         { status: 400 }
       );
     }
 
-    const { prompt, code, language, action } = await request.json();
+    const { prompt, code, language, action } = body;
 
     if (!prompt && !action) {
       return NextResponse.json(
