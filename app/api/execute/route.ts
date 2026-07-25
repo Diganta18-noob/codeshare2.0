@@ -130,16 +130,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ clientSide: true, language: 'javascript' }, { status: 200 });
   }
 
+function formatCSharpCode(code: string): string {
+  let formatted = code;
+
+  // If code has no Main method and no class definition, wrap in public class Program
+  if (!/\bMain\s*\(/.test(formatted) && !/\bclass\s+/.test(formatted)) {
+    formatted = `using System;\n\npublic class Program {\n  public static void Main() {\n    ${formatted}\n  }\n}`;
+  } else {
+    // .NET Fiddle requires class containing Main to be 'public class' and Main to be 'public static'
+    formatted = formatted
+      .replace(/(?:\b(private|internal|protected|public)\s+)?class\s+([A-Za-z0-9_]+)/g, 'public class $2')
+      .replace(/(?:\b(private|internal|protected|public)\s+)?static\s+(void|async\s+Task|Task)\s+Main\b/g, 'public static $2 Main');
+  }
+
+  return formatted;
+}
+
   // C# (csharp) → .NET Fiddle execution (fast, free, requires no API key, works out-of-the-box on Vercel)
   // We run this directly if there's no custom Piston endpoint configured to save latency
   if (language === 'csharp' && !process.env.PISTON_API_URL) {
     try {
       const startTime = Date.now();
-      
-      // .NET Fiddle requires class Program and Main method to be public
-      const formattedCode = code
-        .replace(/(?:\b(private|internal|protected|public)\s+)?class\s+Program\b/g, 'public class Program')
-        .replace(/(?:\b(private|internal|protected|public)\s+)?static\s+(void|async\s+Task|Task)\s+Main\b/g, 'public static $2 Main');
+      const formattedCode = formatCSharpCode(code);
 
       const res = await fetch('https://dotnetfiddle.net/api/fiddles/execute', {
         method: 'POST',
@@ -202,11 +214,7 @@ export async function POST(request: NextRequest) {
   if (language === 'csharp') {
     try {
       const startTime = Date.now();
-      
-      // .NET Fiddle requires class Program and Main method to be public
-      const formattedCode = code
-        .replace(/(?:\b(private|internal|protected|public)\s+)?class\s+Program\b/g, 'public class Program')
-        .replace(/(?:\b(private|internal|protected|public)\s+)?static\s+(void|async\s+Task|Task)\s+Main\b/g, 'public static $2 Main');
+      const formattedCode = formatCSharpCode(code);
 
       const res = await fetch('https://dotnetfiddle.net/api/fiddles/execute', {
         method: 'POST',
