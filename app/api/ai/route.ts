@@ -2,14 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+];
+
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
     if (!apiKey) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Gemini API key is not configured. Please add GEMINI_API_KEY to your .env.local file.',
+          error:
+            'Gemini API key is not configured. Please add GEMINI_API_KEY to Environment Variables in Vercel settings (or .env.local locally).',
         },
         { status: 400 }
       );
@@ -27,58 +38,70 @@ export async function POST(request: NextRequest) {
     let finalPrompt = '';
 
     if (action === 'explain') {
-      finalPrompt = `Explain this ${language} code clearly:\n\n\`\`\`${language}\n${code}\n\`\`\``;
+      finalPrompt = `Explain this ${language} code clearly and concisely:\n\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (action === 'bugs') {
       finalPrompt = `Analyze this ${language} code for bugs, logic errors, or performance issues and suggest fixes:\n\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (action === 'refactor') {
-      finalPrompt = `Refactor this ${language} code to make it more clean, readable, and performant. Provide the refactored code and explain the changes:\n\n\`\`\`${language}\n${code}\n\`\`\``;
+      finalPrompt = `Refactor this ${language} code to make it more clean, readable, and performant. Provide the refactored code block and explain the improvements:\n\n\`\`\`${language}\n${code}\n\`\`\``;
     } else if (action === 'tests') {
       finalPrompt = `Generate comprehensive unit tests for this ${language} code:\n\n\`\`\`${language}\n${code}\n\`\`\``;
     } else {
-      finalPrompt = `Code context (${language}):\n\`\`\`${language}\n${code}\n\`\`\`\n\nUser Question/Request: ${prompt}`;
+      finalPrompt = `Code context (${language}):\n\`\`\`${language}\n${code}\n\`\`\`\n\nUser Request: ${prompt}`;
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    let lastError = '';
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
+    for (const model of GEMINI_MODELS) {
+      try {
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
               {
-                text: finalPrompt,
+                parts: [
+                  {
+                    text: finalPrompt,
+                  },
+                ],
               },
             ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 2048,
-        },
-      }),
-    });
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 2048,
+            },
+          }),
+        });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('[API] Gemini API response error:', errorData);
-      return NextResponse.json(
-        { success: false, error: errorData.error?.message || 'Gemini API returned an error' },
-        { status: response.status }
-      );
+        if (response.ok) {
+          const data = await response.json();
+          const reply =
+            data.candidates?.[0]?.content?.parts?.[0]?.text ||
+            'No response generated.';
+          return NextResponse.json({ success: true, response: reply });
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          lastError = errorData.error?.message || `Model ${model} failed (${response.status})`;
+          console.warn(`[AI] Model ${model} failed:`, lastError);
+        }
+      } catch (err: any) {
+        lastError = err.message || 'Network error';
+        console.warn(`[AI] Model ${model} fetch exception:`, lastError);
+      }
     }
 
-    const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
-
-    return NextResponse.json({ success: true, response: reply });
-  } catch (error: any) {
-    console.error('[API] Gemini API error:', error.message);
     return NextResponse.json(
-      { success: false, error: 'Internal server error while calling Gemini' },
+      { success: false, error: lastError || 'Gemini API call failed across all models' },
+      { status: 500 }
+    );
+  } catch (error: any) {
+    console.error('[API] Gemini API handler error:', error.message);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error while calling Gemini AI' },
       { status: 500 }
     );
   }
