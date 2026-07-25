@@ -231,15 +231,16 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
               onChange={(e) => saveSettings(undefined, e.target.value as any)}
               className="chat-input py-1 px-2 text-xs font-sans"
             >
-              <option value="auto">Auto-Detect (Groq / Gemini / OmniRoute)</option>
-              <option value="omniroute">OmniRoute / Custom Gateway (Local or Remote)</option>
+              <option value="auto">Auto-Detect (OpenRouter / Groq / Gemini / OmniRoute)</option>
+              <option value="openrouter">OpenRouter Cloud AI (Free & Paid Models)</option>
               <option value="groq">Groq AI (gsk_...)</option>
               <option value="gemini">Google Gemini (AIzaSy...)</option>
+              <option value="omniroute">OmniRoute / Custom Gateway (Local or Remote)</option>
             </select>
           </div>
 
           {/* OmniRoute Options */}
-          {(provider === 'omniroute' || provider === 'auto') && (
+          {provider === 'omniroute' && (
             <div className="flex flex-col gap-2 p-2 rounded bg-white/5 border border-white/10">
               <div className="flex flex-col gap-1">
                 <label className="text-[9px] uppercase font-bold text-cyan-400 tracking-wider">
@@ -272,12 +273,12 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
           {/* API Key Input */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              API Key / Auth Token (Optional for Local OmniRoute)
+              API Key / Auth Token
             </label>
             <div className="flex gap-1.5">
               <input
                 type="password"
-                placeholder="gsk_... or sk-... or AIzaSy..."
+                placeholder="sk-or-v1-..., gsk_..., or AIzaSy..."
                 value={apiKey}
                 onChange={(e) => saveSettings(e.target.value)}
                 className="chat-input flex-1 py-1 px-2 text-xs font-mono"
@@ -295,9 +296,10 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
 
           {savedKeySuccess && <span className="text-[10px] text-emerald-400 font-semibold">Settings saved!</span>}
 
-          <div className="flex flex-col gap-0.5 text-[9px] text-slate-500">
-            <span>🚀 <b>OmniRoute Repo:</b> <a href="https://github.com/diegosouzapw/OmniRoute" target="_blank" rel="noreferrer" className="text-purple-400 underline">diegosouzapw/OmniRoute</a></span>
+          <div className="flex flex-col gap-1 text-[9px] text-slate-400 mt-1 pt-1 border-t border-white/5">
+            <span>🌐 <b>OpenRouter (Free Key):</b> <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="text-purple-400 underline">openrouter.ai/keys</a></span>
             <span>⚡ <b>Groq Key:</b> <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-purple-400 underline">console.groq.com</a></span>
+            <span>🚀 <b>OmniRoute Repo:</b> <a href="https://github.com/diegosouzapw/OmniRoute" target="_blank" rel="noreferrer" className="text-purple-400 underline">diegosouzapw/OmniRoute</a></span>
           </div>
         </div>
       )}

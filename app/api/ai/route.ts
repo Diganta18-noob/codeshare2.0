@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+const OPENROUTER_FREE_MODELS = [
+  'deepseek/deepseek-r1:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
+  'mistralai/mistral-7b-instruct:free',
+];
+
 const GROQ_MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-70b-versatile',
@@ -25,11 +33,12 @@ export async function POST(request: NextRequest) {
       body.apiKey ||
       request.headers.get('x-ai-api-key') ||
       request.headers.get('x-gemini-api-key') ||
-      process.env.OMNIROUTE_API_KEY ||
+      process.env.OPENROUTER_API_KEY ||
       process.env.GROQ_API_KEY ||
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_API_KEY ||
-      process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY ||
+      process.env.OMNIROUTE_API_KEY;
 
     const baseUrl =
       reqBaseUrl ||
@@ -37,12 +46,17 @@ export async function POST(request: NextRequest) {
       process.env.OPENAI_BASE_URL ||
       (provider === 'omniroute' ? 'http://localhost:20128/v1' : '');
 
-    if (!apiKey && !baseUrl && provider !== 'omniroute') {
+    const isOpenRouter =
+      provider === 'openrouter' ||
+      apiKey?.startsWith('sk-or-') ||
+      Boolean(process.env.OPENROUTER_API_KEY && !apiKey?.startsWith('gsk_') && !apiKey?.startsWith('AIza'));
+
+    if (!apiKey && !baseUrl && provider !== 'omniroute' && provider !== 'openrouter') {
       return NextResponse.json(
         {
           success: false,
           error:
-            'API key or OmniRoute URL is not configured. Please enter your OmniRoute URL, Groq API Key (gsk_), or Gemini API Key in the AI Assistant settings.',
+            'API key is missing. Please enter your OpenRouter Key (sk-or-v1-), Groq Key (gsk_), Gemini Key, or OmniRoute Base URL in the AI Assistant settings.',
         },
         { status: 400 }
       );
@@ -69,7 +83,61 @@ export async function POST(request: NextRequest) {
       finalPrompt = `Code context (${language}):\n\`\`\`${language}\n${code}\n\`\`\`\n\nUser Request: ${prompt}`;
     }
 
-    // --- 1. OMNIROUTE / CUSTOM OPENAI COMPATIBLE GATEWAY ---
+    // --- 1. OPENROUTER CLOUD GATEWAY ---
+    if (isOpenRouter || provider === 'openrouter') {
+      let lastOpenRouterError = '';
+      const openRouterModels = reqModel
+        ? [reqModel, ...OPENROUTER_FREE_MODELS]
+        : OPENROUTER_FREE_MODELS;
+
+      for (const model of openRouterModels) {
+        try {
+          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': 'https://codeshare2-0.vercel.app',
+              'X-Title': 'CodeShare',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are an expert AI software engineer assistant.',
+                },
+                {
+                  role: 'user',
+                  content: finalPrompt,
+                },
+              ],
+              temperature: 0.2,
+              max_tokens: 2048,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const reply = data.choices?.[0]?.message?.content || 'No response generated.';
+            return NextResponse.json({ success: true, response: reply, provider: 'openrouter', model });
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            lastOpenRouterError = errorData.error?.message || `OpenRouter model ${model} returned HTTP ${response.status}`;
+            console.warn(`[OpenRouter AI] Model ${model} failed:`, lastOpenRouterError);
+          }
+        } catch (err: any) {
+          lastOpenRouterError = err.message || 'OpenRouter fetch failed';
+        }
+      }
+
+      return NextResponse.json(
+        { success: false, error: lastOpenRouterError || 'OpenRouter request failed across all models.' },
+        { status: 500 }
+      );
+    }
+
+    // --- 2. OMNIROUTE / CUSTOM LOCAL/REMOTE GATEWAY ---
     if (baseUrl || provider === 'omniroute') {
       const targetBase = (baseUrl || 'http://localhost:20128/v1').replace(/\/$/, '');
       const endpoint = targetBase.endsWith('/chat/completions')
@@ -126,7 +194,7 @@ export async function POST(request: NextRequest) {
 
     const isGroq = apiKey?.startsWith('gsk_') || Boolean(process.env.GROQ_API_KEY && !apiKey?.startsWith('AIza'));
 
-    // --- 2. GROQ PROVIDER EXECUTION ---
+    // --- 3. GROQ PROVIDER EXECUTION ---
     if (isGroq) {
       let lastGroqError = '';
       const groqModels = reqModel ? [reqModel, ...GROQ_MODELS] : GROQ_MODELS;
@@ -176,7 +244,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --- 3. GEMINI PROVIDER EXECUTION ---
+    // --- 4. GEMINI PROVIDER EXECUTION ---
     let lastGeminiError = '';
     const geminiModels = reqModel ? [reqModel, ...GEMINI_MODELS] : GEMINI_MODELS;
 
