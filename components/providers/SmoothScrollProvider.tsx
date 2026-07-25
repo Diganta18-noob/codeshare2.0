@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Lenis from 'lenis';
 
 export default function SmoothScrollProvider({
@@ -8,7 +9,12 @@ export default function SmoothScrollProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+
   useEffect(() => {
+    // Disable Lenis scroll hijacking inside editor room (/c/[roomId]) to ensure smooth native scrolling inside panels & editor
+    if (pathname?.startsWith('/c/')) return;
+
     // Check if user prefers reduced motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
@@ -36,7 +42,7 @@ export default function SmoothScrollProvider({
       cancelAnimationFrame(animationFrameId);
       lenis.destroy();
     };
-  }, []);
+  }, [pathname]);
 
   return <>{children}</>;
 }

@@ -150,7 +150,7 @@ export default function ChatPanel({ roomId, isVisible, onToggle, onNewMessage }:
       </div>
 
       {/* Messages Area */}
-      <div className="chat-messages">
+      <div className="chat-messages" data-lenis-prevent>
         {messages.length === 0 && (
           <div className="chat-empty">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-20">
