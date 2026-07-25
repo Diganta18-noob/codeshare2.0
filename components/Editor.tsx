@@ -309,37 +309,37 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
       );
     }
 
-    // Define custom theme
+    // Define custom theme with void background depth
     monaco.editor.defineTheme('codeshare-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '4a5568', fontStyle: 'italic' },
+        { token: 'comment', foreground: '52525b', fontStyle: 'italic' },
         { token: 'keyword', foreground: 'c084fc' },
         { token: 'string', foreground: '34d399' },
         { token: 'number', foreground: 'f59e0b' },
         { token: 'type', foreground: '22d3ee' },
       ],
       colors: {
-        'editor.background': '#0a0a0a',
-        'editor.foreground': '#e5e5e5',
-        'editor.lineHighlightBackground': '#111111',
+        'editor.background': '#06090F',
+        'editor.foreground': '#f1f5f9',
+        'editor.lineHighlightBackground': '#111827',
         'editor.lineHighlightBorder': '#00000000',
-        'editorLineNumber.foreground': '#3a3a3a',
-        'editorLineNumber.activeForeground': '#f59e0b',
-        'editor.selectionBackground': '#f59e0b33',
-        'editor.inactiveSelectionBackground': '#f59e0b1a',
-        'editorCursor.foreground': '#f59e0b',
-        'editorWhitespace.foreground': '#1e1e1e',
-        'editorIndentGuide.background': '#1e1e1e',
-        'editorIndentGuide.activeBackground': '#2a2a2a',
-        'editorWidget.background': '#111111',
-        'editorWidget.border': '#1e1e1e',
-        'input.background': '#0a0a0a',
-        'input.border': '#1e1e1e',
-        'focusBorder': '#f59e0b',
-        'list.activeSelectionBackground': '#f59e0b33',
-        'list.hoverBackground': '#161616',
+        'editorLineNumber.foreground': '#334155',
+        'editorLineNumber.activeForeground': '#8b5cf6',
+        'editor.selectionBackground': '#8b5cf633',
+        'editor.inactiveSelectionBackground': '#8b5cf61a',
+        'editorCursor.foreground': '#8b5cf6',
+        'editorWhitespace.foreground': '#1e293b',
+        'editorIndentGuide.background': '#1e293b',
+        'editorIndentGuide.activeBackground': '#334155',
+        'editorWidget.background': '#0f172a',
+        'editorWidget.border': '#1e293b',
+        'input.background': '#06090f',
+        'input.border': '#1e293b',
+        'focusBorder': '#8b5cf6',
+        'list.activeSelectionBackground': '#8b5cf633',
+        'list.hoverBackground': '#1e293b',
       },
     });
     monaco.editor.setTheme('codeshare-dark');
@@ -383,39 +383,88 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     socket.emit('file-switch', { roomId, activeFileIndex: index });
   };
 
+  const getLanguageDotColor = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'js':
+      case 'jsx': return '#f7df1e';
+      case 'ts':
+      case 'tsx': return '#3178c6';
+      case 'py': return '#3776ab';
+      case 'css': return '#1572b6';
+      case 'cs': return '#8b5cf6';
+      case 'json': return '#8bc34a';
+      case 'html': return '#e34f26';
+      default: return '#a0aec0';
+    }
+  };
+
   return (
-    <div ref={containerRef} className="flex flex-col h-full overflow-hidden">
+    <div ref={containerRef} className="flex flex-col h-full overflow-hidden relative">
+      {/* Network Speed Indicator Badge (LiveBadge) */}
+      <div className="absolute top-2 right-4 z-20 pointer-events-none">
+        <div className="live-badge opacity-90 hover:opacity-100 transition-opacity">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-emerald-400">43.6 K/s ↑</span>
+          <span className="text-slate-500">|</span>
+          <span className="text-purple-400">1.6 K/s ↓</span>
+        </div>
+      </div>
+
       {/* File Tabs Bar */}
       {files.length > 0 && (
-        <div className="editor-tabs">
+        <div className="editor-tabs relative flex items-center bg-[#06090F] border-b border-[var(--bg-border)]">
           {files.map((file, idx) => {
             const isActive = idx === activeFileIndex;
+            const dotColor = getLanguageDotColor(file.name);
+
             return (
-              <button
+              <div
                 key={file.name + '-tab-' + idx}
                 onClick={() => handleTabClick(idx)}
-                className="flex items-center gap-1.5 px-3 h-full text-xs font-mono whitespace-nowrap transition-colors flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-primary)]"
-                style={{
-                  color: isActive ? 'var(--text-primary)' : 'var(--text-dim)',
-                  background: isActive ? 'var(--bg-base)' : 'transparent',
-                  borderTop: isActive
-                    ? '2px solid var(--accent-primary)'
-                    : '2px solid transparent',
-                  borderRight: '1px solid var(--bg-border)',
-                  borderBottom: isActive ? '1px solid var(--bg-base)' : 'none',
-                  borderLeft: 'none',
-                  marginBottom: isActive ? '-1px' : '0',
-                }}
+                className={`group flex items-center gap-2 px-3.5 h-full text-xs font-mono whitespace-nowrap transition-all cursor-pointer border-r border-[var(--bg-border)] relative ${
+                  isActive ? 'bg-[#0A0F1C] text-white font-medium' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
               >
+                {/* Language colored dot */}
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0 transition-transform group-hover:scale-125"
+                  style={{ backgroundColor: dotColor }}
+                />
+                
                 <span>{file.name}</span>
-              </button>
+
+                {/* Close Button ✕ (visible on hover or active) */}
+                {files.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const updatedFiles = files.filter((_, i) => i !== idx);
+                      setFiles(updatedFiles);
+                      if (isActive) {
+                        const nextIdx = Math.max(0, idx - 1);
+                        setActiveFileIndex(nextIdx);
+                      }
+                      socket.emit('file-tree-change', { roomId, files: updatedFiles });
+                    }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-all transform scale-90 group-hover:scale-100 ml-1"
+                    title="Close tab"
+                    aria-label={`Close ${file.name}`}
+                  >
+                    ✕
+                  </button>
+                )}
+
+                {/* Active tab bottom gradient border */}
+                {isActive && <div className="tab-active-indicator left-0 right-0" />}
+              </div>
             );
           })}
         </div>
       )}
 
       {/* Editor Frame */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <MonacoEditor
           height="100%"
           language={language}
@@ -423,8 +472,12 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
           onChange={handleCodeChange}
           onMount={handleMount}
           loading={
-            <div className="editor-skeleton">
-              <div className="editor-skeleton-pulse" />
+            <div className="editor-skeleton p-8 flex flex-col gap-3 w-full h-full bg-[#06090F]">
+              <div className="skeleton-line w-1/3" />
+              <div className="skeleton-line w-2/3" />
+              <div className="skeleton-line w-1/2" />
+              <div className="skeleton-line w-3/4" />
+              <div className="skeleton-line w-2/5" />
             </div>
           }
           options={{
@@ -432,7 +485,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
             fontSize: 14,
             fontFamily: "'JetBrains Mono', monospace",
             fontLigatures: true,
-            minimap: { enabled: false },
+            minimap: { enabled: true, scale: 0.75 },
             scrollBeyondLastLine: false,
             wordWrap: 'on',
             lineNumbers: 'on',

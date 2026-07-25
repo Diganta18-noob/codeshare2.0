@@ -8,9 +8,11 @@
    DESIGN SYSTEM — COLOR TOKENS
    ========================================= */
 :root {
-  /* Backgrounds */
-  --bg-base: #0F172A;
+  /* Backgrounds & Layering Depth */
+  --bg-void: #06090F;
+  --bg-base: #0A0F1C;
   --bg-surface: #1E293B;
+  --bg-raised: #252D3D;
   --bg-elevated: #334155;
   --bg-border: rgba(255, 255, 255, 0.08);
   --bg-border-active: rgba(139, 92, 246, 0.4);
@@ -18,9 +20,9 @@
   /* Primary / Accent */
   --accent-primary: #8B5CF6;
   --accent-primary-hover: #7C3AED;
-  --accent-primary-glow: rgba(139, 92, 246, 0.15);
+  --accent-primary-glow: rgba(139, 92, 246, 0.2);
   --accent-blue: #3B82F6;
-  --accent-blue-glow: rgba(59, 130, 246, 0.15);
+  --accent-blue-glow: rgba(59, 130, 246, 0.2);
   --accent-purple: #8B5CF6;
   --accent-cyan: #06b6d4;
   --accent-green: #22C55E;
@@ -67,7 +69,8 @@ html,
 body {
   height: 100%;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--bg-base);
+  background: radial-gradient(ellipse at 20% 0%, #0D1425 0%, #0A0F1C 60%, #08090D 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -96,7 +99,7 @@ body {
 }
 
 /* =========================================
-   MONACO EDITOR OVERRIDES
+   MONACO EDITOR OVERRIDES & DEPTH
    ========================================= */
 .monaco-editor .scroll-decoration {
   display: none !important;
@@ -104,20 +107,135 @@ body {
 
 .monaco-editor {
   border-radius: 0 !important;
+  background-color: var(--bg-void) !important;
 }
 
 .monaco-editor .margin {
-  background-color: var(--bg-base) !important;
+  background-color: var(--bg-void) !important;
+}
+
+.monaco-editor-background {
+  background-color: var(--bg-void) !important;
 }
 
 /* =========================================
-   BACKGROUND EFFECTS
+   BACKGROUND EFFECTS & AURORA DEPTH
    ========================================= */
 .grid-pattern {
-  background-size: 50px 50px;
+  background-size: 40px 40px;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.008) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.008) 1px, transparent 1px);
+}
+
+/* Shimmer gradient line bottom border */
+.toolbar-shimmer-border {
+  position: relative;
+}
+
+.toolbar-shimmer-border::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3), transparent);
+  background-size: 200% 100%;
+  animation: shimmer-line 4s linear infinite;
+}
+
+@keyframes shimmer-line {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Pulse ring animation for add file (+) button */
+.pulse-ring-btn {
+  position: relative;
+}
+
+.pulse-ring-btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  border: 1px solid var(--accent-primary);
+  opacity: 0;
+  animation: pulse-ring 4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* Active tab sliding gradient underline */
+.tab-active-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-blue));
+  border-radius: 2px 2px 0 0;
+  transition: left 0.25s cubic-bezier(0.16, 1, 0.3, 1), width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+}
+
+/* Shimmer Light Sweep on Buttons */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer-sweep 3s infinite;
+}
+
+@keyframes shimmer-sweep {
+  0% { left: -100%; }
+  30% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* LiveBadge Network Indicator */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all var(--transition-fast);
+}
+
+/* Smoothie Skeleton shimmer */
+.skeleton-line {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 25%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .radial-glow {

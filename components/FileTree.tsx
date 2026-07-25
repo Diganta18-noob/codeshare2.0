@@ -138,14 +138,14 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
         aria-label="File tree sidebar"
       >
         {/* Header */}
-        <div className="sidebar-header">
-          <span className="sidebar-header-title">
+        <div className="sidebar-header relative">
+          <span className="sidebar-header-title tracking-widest font-mono text-[10px] uppercase font-bold text-slate-400">
             Workspace Files
           </span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <button
               onClick={() => setIsAdding(!isAdding)}
-              className="output-clear-btn p-1"
+              className="output-clear-btn p-1 pulse-ring-btn hover:scale-105 transition-transform"
               title="Create File"
               aria-label="Create new file"
             >
@@ -170,7 +170,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
               placeholder="filename.js"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
-              className="chat-input w-full py-1.5 text-xs"
+              className="chat-input w-full py-1.5 text-xs font-mono"
               autoFocus
               onBlur={() => {
                 if (!newFileName.trim()) setIsAdding(false);
@@ -180,7 +180,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
         )}
 
         {/* Files List */}
-        <div ref={filesListRef} className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
+        <div ref={filesListRef} className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
           {files.map((file, idx) => {
             const isActive = idx === activeFileIndex;
             const isRenaming = idx === renamingIndex;
@@ -189,14 +189,17 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
               <div
                 key={file.name + '-' + idx}
                 onClick={() => !isRenaming && handleFileClick(idx)}
-                className="file-item flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer group text-xs transition-colors"
+                className={`file-item flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer group text-xs transition-all duration-200 ${
+                  isActive ? 'border-l-3 border-[var(--accent-primary)] shadow-sm' : 'hover:translate-x-0.5'
+                }`}
                 style={{
-                  background: isActive ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
-                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  borderLeft: isActive ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                  background: isActive ? 'rgba(139, 92, 246, 0.12)' : 'transparent',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                 }}
               >
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <span className="font-bold font-mono text-[9px] w-5 text-center leading-none opacity-80 flex-shrink-0">
+                  <span className="font-bold font-mono text-[9px] w-5 text-center leading-none opacity-90 flex-shrink-0 transition-transform group-hover:scale-110">
                     {getFileIcon(file.name)}
                   </span>
 
@@ -215,7 +218,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="truncate font-mono">{file.name}</span>
+                    <span className="truncate font-mono tracking-tight font-medium">{file.name}</span>
                   )}
                 </div>
 

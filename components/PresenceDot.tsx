@@ -11,11 +11,10 @@ export default function PresenceDot() {
 
   useEffect(() => {
     if (dotRef.current) {
-      gsap.fromTo(
-        dotRef.current,
-        { scale: 0 },
-        { scale: 1, duration: 0.4, ease: 'back.out(1.7)' }
-      );
+      const tl = gsap.timeline();
+      tl.to(dotRef.current, { scale: 0, duration: 0.1 })
+        .to(dotRef.current, { scale: 1.4, duration: 0.25, ease: 'back.out(2)' })
+        .to(dotRef.current, { scale: 1, duration: 0.15, ease: 'power2.out' });
     }
     if (countRef.current) {
       gsap.fromTo(

@@ -37,14 +37,24 @@ export default function ChatPanel({ roomId, isVisible, onToggle, onNewMessage }:
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // GSAP slide-in animation on open
+  // GSAP slide-in animation on open (ease: expo.out, duration: 0.45)
   useEffect(() => {
     if (isVisible && panelRef.current) {
       gsap.fromTo(
         panelRef.current,
         { x: 320, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
+        { x: 0, opacity: 1, duration: 0.45, ease: 'expo.out' }
       );
+
+      const msgs = panelRef.current.querySelectorAll('.chat-message');
+      if (msgs.length > 0) {
+        gsap.fromTo(
+          msgs,
+          { y: 12, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.1 }
+        );
+      }
+
       setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isVisible]);

@@ -20,14 +20,13 @@ export default function StatusBar({ roomId }: StatusBarProps) {
   const charRef = useRef<HTMLSpanElement>(null);
   const lineRef = useRef<HTMLSpanElement>(null);
 
-  // Color flash on language change
+  // 3D Card flip animation on language change
   useEffect(() => {
     if (langRef.current) {
-      gsap.fromTo(
-        langRef.current,
-        { color: '#22c55e', scale: 1.15 },
-        { color: 'var(--accent-primary)', scale: 1, duration: 0.4, ease: 'power2.out' }
-      );
+      const tl = gsap.timeline();
+      tl.to(langRef.current, { rotateX: 90, duration: 0.15, ease: 'power2.in' })
+        .set(langRef.current, { color: '#8b5cf6' })
+        .to(langRef.current, { rotateX: 0, duration: 0.2, ease: 'back.out(1.5)' });
     }
   }, [language]);
 
@@ -36,8 +35,8 @@ export default function StatusBar({ roomId }: StatusBarProps) {
     if (charRef.current) {
       gsap.fromTo(
         charRef.current,
-        { scale: 1.1 },
-        { scale: 1, duration: 0.2, ease: 'power1.out' }
+        { scale: 1.15, color: '#8b5cf6' },
+        { scale: 1, color: 'var(--text-secondary)', duration: 0.25, ease: 'power1.out' }
       );
     }
   }, [charCount]);
@@ -46,8 +45,8 @@ export default function StatusBar({ roomId }: StatusBarProps) {
     if (lineRef.current) {
       gsap.fromTo(
         lineRef.current,
-        { scale: 1.1 },
-        { scale: 1, duration: 0.2, ease: 'power1.out' }
+        { scale: 1.15, color: '#8b5cf6' },
+        { scale: 1, color: 'var(--text-secondary)', duration: 0.25, ease: 'power1.out' }
       );
     }
   }, [lineCount]);
@@ -87,6 +86,16 @@ export default function StatusBar({ roomId }: StatusBarProps) {
 
   return (
     <div className="status-bar" role="status" aria-label="Editor status bar">
+      {/* Connection Breathing Status Indicator */}
+      <div className="status-bar-item flex items-center gap-1.5 pr-1">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        </span>
+      </div>
+
+      <div className="status-bar-separator" />
+
       {/* Position */}
       <div className="status-bar-item">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
@@ -99,20 +108,24 @@ export default function StatusBar({ roomId }: StatusBarProps) {
 
       {/* Characters */}
       <div className="status-bar-item status-bar-hide-tablet">
-        <span ref={charRef} className="inline-block">{charCount.toLocaleString()} chars</span>
+        <span ref={charRef} className="inline-block transition-transform">{charCount.toLocaleString()} chars</span>
       </div>
 
       <div className="status-bar-separator status-bar-hide-tablet" />
 
       {/* Lines */}
       <div className="status-bar-item">
-        <span ref={lineRef} className="inline-block">{lineCount} lines</span>
+        <span ref={lineRef} className="inline-block transition-transform">{lineCount} lines</span>
       </div>
 
       <div className="status-bar-separator" />
 
-      {/* Language */}
-      <div ref={langRef} className="status-bar-item font-semibold inline-block" style={{ color: 'var(--accent-primary)' }}>
+      {/* Language with 3D Flip */}
+      <div
+        ref={langRef}
+        className="status-bar-item font-semibold inline-block transition-transform origin-center"
+        style={{ color: 'var(--accent-primary)', perspective: '400px' }}
+      >
         {langLabel}
       </div>
 
@@ -133,13 +146,15 @@ export default function StatusBar({ roomId }: StatusBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Active Room Workspace ID */}
-      <div className="status-bar-item text-[10px] status-bar-hide-mobile" style={{ color: 'var(--text-dim)' }}>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40">
+      {/* Active Room Workspace ID with hover expand */}
+      <div className="status-bar-item text-[10px] status-bar-hide-mobile cursor-pointer group" style={{ color: 'var(--text-dim)' }}>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 group-hover:opacity-100 transition-opacity">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
-        <span>room: {roomId}</span>
+        <span className="font-mono transition-all duration-200 group-hover:tracking-wider group-hover:text-purple-400">
+          room: {roomId}
+        </span>
       </div>
     </div>
   );

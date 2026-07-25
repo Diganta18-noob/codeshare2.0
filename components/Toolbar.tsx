@@ -385,7 +385,7 @@ export default function Toolbar({
 
   return (
     <>
-      <div ref={toolbarRef} className="toolbar" role="toolbar" aria-label="Editor toolbar">
+      <div ref={toolbarRef} className="toolbar toolbar-shimmer-border" role="toolbar" aria-label="Editor toolbar">
         {/* LEFT SECTION */}
         <div className="toolbar-left">
           {/* Logo */}

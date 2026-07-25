@@ -160,7 +160,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
         <button
           onClick={() => handleSend('', 'explain')}
           disabled={isLoading}
-          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-transform hover:-translate-y-0.5"
           style={{ borderColor: 'var(--bg-border)' }}
         >
           💡 Explain
@@ -168,7 +168,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
         <button
           onClick={() => handleSend('', 'bugs')}
           disabled={isLoading}
-          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-transform hover:-translate-y-0.5"
           style={{ borderColor: 'var(--bg-border)' }}
         >
           🐛 Find Bugs
@@ -176,7 +176,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
         <button
           onClick={() => handleSend('', 'refactor')}
           disabled={isLoading}
-          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-transform hover:-translate-y-0.5"
           style={{ borderColor: 'var(--bg-border)' }}
         >
           ✨ Refactor
@@ -184,7 +184,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
         <button
           onClick={() => handleSend('', 'tests')}
           disabled={isLoading}
-          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+          className="rounded-full border px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-transform hover:-translate-y-0.5"
           style={{ borderColor: 'var(--bg-border)' }}
         >
           🧪 Unit Tests
@@ -225,9 +225,9 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
             {msg.sender === 'ai' && extractCode(msg.text) && (
               <button
                 onClick={() => handleApplyCode(msg.text)}
-                className="btn-premium btn-premium-primary text-[10px] py-1 mt-1.5 w-full text-center"
+                className="btn-premium btn-premium-primary btn-shimmer text-[10px] py-1 mt-1.5 w-full text-center"
               >
-                Apply code suggestions to editor
+                ✦ Apply code suggestions to editor
               </button>
             )}
           </div>
