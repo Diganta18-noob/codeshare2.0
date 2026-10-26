@@ -6,6 +6,8 @@ import { socket } from '@/lib/socket';
 import { useEditorStore } from '@/store/editorStore';
 import type { editor } from 'monaco-editor';
 import { gsap } from 'gsap';
+import FileIcon from '@/components/FileIcon';
+import UIIcon from '@/components/UIIcon';
 
 interface EditorProps {
   roomId: string;
@@ -301,7 +303,7 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    if (containerRef.current) {
+    if (containerRef.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       gsap.fromTo(
         containerRef.current,
         { opacity: 0 },
@@ -314,30 +316,30 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '52525b', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'c084fc' },
-        { token: 'string', foreground: '34d399' },
-        { token: 'number', foreground: 'f59e0b' },
-        { token: 'type', foreground: '22d3ee' },
+        { token: 'comment', foreground: '7c879f', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'b9a1ef' },
+        { token: 'string', foreground: '9cc9af' },
+        { token: 'number', foreground: 'dfbd8b' },
+        { token: 'type', foreground: '8dbed5' },
       ],
       colors: {
-        'editor.background': '#06090F',
-        'editor.foreground': '#f1f5f9',
-        'editor.lineHighlightBackground': '#111827',
+        'editor.background': '#0d1017',
+        'editor.foreground': '#dbe1ee',
+        'editor.lineHighlightBackground': '#151a26',
         'editor.lineHighlightBorder': '#00000000',
-        'editorLineNumber.foreground': '#334155',
-        'editorLineNumber.activeForeground': '#8b5cf6',
+        'editorLineNumber.foreground': '#626d83',
+        'editorLineNumber.activeForeground': '#b49aee',
         'editor.selectionBackground': '#8b5cf633',
         'editor.inactiveSelectionBackground': '#8b5cf61a',
-        'editorCursor.foreground': '#8b5cf6',
+        'editorCursor.foreground': '#b49aee',
         'editorWhitespace.foreground': '#1e293b',
         'editorIndentGuide.background': '#1e293b',
-        'editorIndentGuide.activeBackground': '#334155',
+        'editorIndentGuide.activeBackground': '#626d83',
         'editorWidget.background': '#0f172a',
         'editorWidget.border': '#1e293b',
         'input.background': '#06090f',
         'input.border': '#1e293b',
-        'focusBorder': '#8b5cf6',
+        'focusBorder': '#b49aee',
         'list.activeSelectionBackground': '#8b5cf633',
         'list.hoverBackground': '#1e293b',
       },
@@ -383,88 +385,43 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
     socket.emit('file-switch', { roomId, activeFileIndex: index });
   };
 
-  const getLanguageDotColor = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'js':
-      case 'jsx': return '#f7df1e';
-      case 'ts':
-      case 'tsx': return '#3178c6';
-      case 'py': return '#3776ab';
-      case 'css': return '#1572b6';
-      case 'cs': return '#8b5cf6';
-      case 'json': return '#8bc34a';
-      case 'html': return '#e34f26';
-      default: return '#a0aec0';
-    }
-  };
+  useEffect(() => {
+    document.getElementById(`file-tab-${activeFileIndex}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeFileIndex, files.length]);
 
   return (
-    <div ref={containerRef} className="flex flex-col h-full overflow-hidden relative">
-      {/* Network Speed Indicator Badge (LiveBadge) */}
-      <div className="absolute top-2 right-4 z-20 pointer-events-none">
-        <div className="live-badge opacity-90 hover:opacity-100 transition-opacity">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-400">43.6 K/s ↑</span>
-          <span className="text-slate-500">|</span>
-          <span className="text-purple-400">1.6 K/s ↓</span>
-        </div>
-      </div>
-
-      {/* File Tabs Bar */}
+    <div ref={containerRef} className="ws-editor flex flex-col h-full overflow-hidden relative">
       {files.length > 0 && (
-        <div className="editor-tabs relative flex items-center bg-[#06090F] border-b border-[var(--bg-border)]">
-          {files.map((file, idx) => {
-            const isActive = idx === activeFileIndex;
-            const dotColor = getLanguageDotColor(file.name);
-
-            return (
-              <div
-                key={file.name + '-tab-' + idx}
-                onClick={() => handleTabClick(idx)}
-                className={`group flex items-center gap-2 px-3.5 h-full text-xs font-mono whitespace-nowrap transition-all cursor-pointer border-r border-[var(--bg-border)] relative ${
-                  isActive ? 'bg-[#0A0F1C] text-white font-medium' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                }`}
-              >
-                {/* Language colored dot */}
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0 transition-transform group-hover:scale-125"
-                  style={{ backgroundColor: dotColor }}
-                />
-                
-                <span>{file.name}</span>
-
-                {/* Close Button ✕ (visible on hover or active) */}
-                {files.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const updatedFiles = files.filter((_, i) => i !== idx);
-                      setFiles(updatedFiles);
-                      if (isActive) {
-                        const nextIdx = Math.max(0, idx - 1);
-                        setActiveFileIndex(nextIdx);
-                      }
-                      socket.emit('file-tree-change', { roomId, files: updatedFiles });
-                    }}
-                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-all transform scale-90 group-hover:scale-100 ml-1"
-                    title="Close tab"
-                    aria-label={`Close ${file.name}`}
-                  >
-                    ✕
-                  </button>
-                )}
-
-                {/* Active tab bottom gradient border */}
-                {isActive && <div className="tab-active-indicator left-0 right-0" />}
-              </div>
-            );
-          })}
+        <div className="ws-tabs" role="tablist" aria-label="Open files">
+          {files.map((file, index) => (
+            <button
+              key={file.name + '-tab-' + index}
+              id={`file-tab-${index}`}
+              role="tab"
+              aria-selected={index === activeFileIndex}
+              aria-controls="workspace-editor"
+              tabIndex={index === activeFileIndex ? 0 : -1}
+              onClick={() => handleTabClick(index)}
+              onKeyDown={(event) => {
+                let next = index;
+                if (event.key === 'ArrowRight') next = (index + 1) % files.length;
+                else if (event.key === 'ArrowLeft') next = (index - 1 + files.length) % files.length;
+                else if (event.key === 'Home') next = 0;
+                else if (event.key === 'End') next = files.length - 1;
+                else return;
+                event.preventDefault();
+                handleTabClick(next);
+                document.getElementById(`file-tab-${next}`)?.focus();
+              }}
+              className={`ws-tab ${index === activeFileIndex ? 'is-active' : ''}`}
+              title={file.name}
+            ><FileIcon name={file.name} /><span>{file.name}</span>{index === activeFileIndex && <i aria-hidden="true" />}</button>
+          ))}
         </div>
       )}
-
+      <div className="ws-breadcrumb" aria-label="Current file"><UIIcon name="folder" /><span>{roomId}</span><UIIcon name="chevron" /><FileIcon name={files[activeFileIndex]?.name || 'index.js'} /><strong>{files[activeFileIndex]?.name || 'index.js'}</strong><span className="ws-editor-mode">{isReadOnly ? 'Read only' : 'Editing'}</span></div>
       {/* Editor Frame */}
-      <div className="flex-1 overflow-hidden relative">
+      <div id="workspace-editor" role="tabpanel" aria-labelledby={`file-tab-${activeFileIndex}`} className="flex-1 overflow-hidden relative">
         <MonacoEditor
           height="100%"
           language={language}
@@ -483,17 +440,18 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
           options={{
             readOnly: isReadOnly,
             fontSize: 14,
+            lineHeight: 24,
             fontFamily: "'JetBrains Mono', monospace",
             fontLigatures: true,
-            minimap: { enabled: true, scale: 0.75 },
+            minimap: { enabled: false },
             scrollBeyondLastLine: false,
             wordWrap: 'on',
             lineNumbers: 'on',
             renderLineHighlight: 'line',
-            cursorBlinking: 'smooth',
-            cursorSmoothCaretAnimation: 'on',
-            smoothScrolling: true,
-            padding: { top: 16, bottom: 16 },
+            cursorBlinking: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'solid' : 'smooth',
+            cursorSmoothCaretAnimation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : 'on',
+            smoothScrolling: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+            padding: { top: 20, bottom: 20 },
             automaticLayout: true,
             tabSize: 2,
             bracketPairColorization: { enabled: true },

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { socket } from '@/lib/socket';
 import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
+import { useMobileDrawer } from '@/components/providers/useMobileDrawer';
 
 interface ChatMessage {
   id: string;
@@ -39,6 +40,7 @@ export default function ChatPanel({ roomId, isVisible, onToggle, onNewMessage }:
 
   // GSAP slide-in animation on open (ease: expo.out, duration: 0.45)
   usePanelEntrance(panelRef, isVisible, 'right');
+  useMobileDrawer(panelRef, isVisible, onToggle);
   useEffect(() => {
     if (!isVisible) return;
     const timer = window.setTimeout(() => inputRef.current?.focus(), 150);

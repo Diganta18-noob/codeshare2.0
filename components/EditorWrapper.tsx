@@ -59,6 +59,14 @@ export default function EditorWrapper({
   // FileTree sidebar state
   const [showFileTree, setShowFileTree] = useState(true);
 
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 768px)');
+    const collapseExplorer = () => { if (media.matches) setShowFileTree(false); };
+    collapseExplorer();
+    media.addEventListener('change', collapseExplorer);
+    return () => media.removeEventListener('change', collapseExplorer);
+  }, []);
+
   // Initialize store with server data if unlocked
   useEffect(() => {
     if (isUnlocked) {
@@ -134,18 +142,27 @@ export default function EditorWrapper({
       // Ctrl+Shift+C to toggle chat
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
         e.preventDefault();
+        if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false);
         setShowChat((prev) => !prev);
+        setShowHistory(false);
+        setShowAI(false);
         setUnreadChat(0);
       }
       // Ctrl+Shift+H to toggle history
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
         e.preventDefault();
+        if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false);
         setShowHistory((prev) => !prev);
+        setShowChat(false);
+        setShowAI(false);
       }
       // Ctrl+Shift+A to toggle AI
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'A') {
         e.preventDefault();
+        if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false);
         setShowAI((prev) => !prev);
+        setShowChat(false);
+        setShowHistory(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -180,6 +197,9 @@ export default function EditorWrapper({
   }, []);
 
   const handleToggleChat = useCallback(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false);
+    setShowHistory(false);
+    setShowAI(false);
     setShowChat((prev) => {
       if (!prev) setUnreadChat(0);
       return !prev;
@@ -187,14 +207,25 @@ export default function EditorWrapper({
   }, []);
 
   const handleToggleHistory = useCallback(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false);
+    setShowChat(false);
+    setShowAI(false);
     setShowHistory((prev) => !prev);
   }, []);
 
   const handleToggleAI = useCallback(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false);
+    setShowChat(false);
+    setShowHistory(false);
     setShowAI((prev) => !prev);
   }, []);
 
   const handleToggleFileTree = useCallback(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      setShowChat(false);
+      setShowHistory(false);
+      setShowAI(false);
+    }
     setShowFileTree((prev) => !prev);
   }, []);
 
@@ -314,16 +345,17 @@ export default function EditorWrapper({
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="ws-workbench flex flex-1 overflow-hidden relative">
         {/* Left Sidebar: File Tree */}
-        <FileTree
+        {!isEmbed && <FileTree
           roomId={roomId}
           isVisible={showFileTree}
           onToggle={handleToggleFileTree}
-        />
+          isReadOnly={editorIsReadOnly}
+        />}
 
         {/* Main editor area */}
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex min-w-0 flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <Editor roomId={roomId} isReadOnly={editorIsReadOnly} />
           </div>

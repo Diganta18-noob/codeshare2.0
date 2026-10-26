@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
+import { useMobileDrawer } from '@/components/providers/useMobileDrawer';
 
 interface AIMessage {
   id: string;
@@ -32,6 +33,7 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
   }, [messages]);
 
   usePanelEntrance(panelRef, isVisible, 'right');
+  useMobileDrawer(panelRef, isVisible, onToggle);
   useEffect(() => {
     if (!isVisible) return;
     const timer = window.setTimeout(() => inputRef.current?.focus(), 150);

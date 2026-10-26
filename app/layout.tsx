@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
+import '@/styles/workspace.css';
 import GSAPProvider from '@/components/providers/GSAPProvider';
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider';
 

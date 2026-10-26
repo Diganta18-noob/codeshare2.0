@@ -6,6 +6,7 @@ import { socket } from '@/lib/socket';
 import { useEditorStore } from '@/store/editorStore';
 import { LANGUAGES } from '@/lib/languages';
 import PresenceDot from '@/components/PresenceDot';
+import UIIcon from '@/components/UIIcon';
 import { gsap } from 'gsap';
 
 interface ToolbarProps {
@@ -60,9 +61,9 @@ export default function Toolbar({
   const [copied, setCopied] = useState(false);
   const [copiedReadOnly, setCopiedReadOnly] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
 
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLElement>(null);
 
 
   // Settings dropdown state
@@ -70,6 +71,7 @@ export default function Toolbar({
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
 
   // A short entrance keeps the workspace calm and respects motion preferences.
   useEffect(() => {
@@ -93,19 +95,23 @@ export default function Toolbar({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowSettings(false);
       }
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        menuRef.current.open = false;
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && showSettings) {
+        setShowSettings(false);
+        dropdownRef.current?.querySelector('button')?.focus();
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Close mobile menu on resize past breakpoint
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768) setMobileMenuOpen(false);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [showSettings]);
 
   const handleLanguageChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -129,7 +135,7 @@ export default function Toolbar({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy URL:', err);
+      setActionMessage('Couldn’t copy the link. Please try again.');
     }
   }, []);
 
@@ -140,21 +146,24 @@ export default function Toolbar({
       setCopiedReadOnly(true);
       setTimeout(() => setCopiedReadOnly(false), 2000);
     } catch (err) {
-      console.error('Failed to copy Read-Only URL:', err);
+      setActionMessage('Couldn’t copy the read-only link. Please try again.');
     }
   }, []);
 
   const handleNewPad = useCallback(async () => {
+    if (isCreating) return;
     setIsCreating(true);
     try {
       const res = await fetch('/api/rooms', { method: 'POST' });
+      if (!res.ok) throw new Error('Room creation failed');
       const data = await res.json();
-      router.push(`/c/${data.roomId}`);
+      if (typeof data.roomId !== 'string' || !data.roomId.trim()) throw new Error('Missing room ID');
+      router.push(`/c/${encodeURIComponent(data.roomId)}`);
     } catch (err) {
-      console.error('Failed to create pad:', err);
+      setActionMessage('Couldn’t create a workspace. Please try again.');
       setIsCreating(false);
     }
-  }, [router]);
+  }, [router, isCreating]);
 
   const handleDownload = useCallback(() => {
     const blob = new Blob([code], { type: 'text/plain' });
@@ -171,8 +180,9 @@ export default function Toolbar({
   const handleCopyCode = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(code);
+      setActionMessage('Code copied.');
     } catch (err) {
-      console.error('Failed to copy code:', err);
+      setActionMessage('Couldn’t copy the code. Please try again.');
     }
   }, [code]);
 
@@ -234,12 +244,6 @@ export default function Toolbar({
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
-    </svg>
-  );
-
-  const AIIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 2a10 10 0 0 1 7.54 16.59l-1.42-1.42A8 8 0 1 0 6.08 14H8v2H3v-5h2v2.42A9.96 9.96 0 0 1 12 2zm1 6v3.59l2.71 2.71-1.42 1.42L11 11V8h2z" />
     </svg>
   );
 
@@ -361,361 +365,53 @@ export default function Toolbar({
   );
 
   return (
-    <>
-      <div ref={toolbarRef} className="toolbar toolbar-shimmer-border" role="toolbar" aria-label="Editor toolbar">
-        {/* LEFT SECTION */}
-        <div className="toolbar-left">
-          {/* Logo */}
-          <a
-            href="/"
-            className="toolbar-logo"
-          >
-            {'{ codeshare }'}
-          </a>
-
-          {/* Sidebar Toggle */}
-          <button
-            onClick={onToggleFileTree}
-            className={`btn-premium ${showFileTree ? 'btn-premium-chat-active' : 'btn-premium-ghost'} p-1.5`}
-            title="Toggle File Tree"
-            aria-label="Toggle file tree"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-            </svg>
-          </button>
-
-          {/* Divider */}
-          <div className="toolbar-divider toolbar-hide-tablet" />
-
-          {/* Language selector */}
-          <div className="custom-select-wrapper">
-            <select
-              className="custom-select"
-              value={language}
-              onChange={handleLanguageChange}
-              disabled={isReadOnly}
-              id="language-selector"
-              aria-label="Programming language"
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.id} value={lang.id}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Presence */}
-          <PresenceDot />
-
-          {/* Read-only / Locked badges */}
-          {(isReadOnly || (isLocked && !isLockedByMe)) && (
-            <span
-              className="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border cursor-pointer hover:opacity-80 transition"
-              title={isLocked ? "Room is locked. Click settings to unlock." : "Read-only mode"}
-              style={{
-                background: isLocked ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                color: isLocked ? '#ef4444' : '#f59e0b',
-                borderColor: isLocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-              }}
-              onClick={() => {
-                if (isLocked) setShowSettings(true);
-              }}
-            >
-              {isLocked ? '🔒 Locked' : 'Read Only'}
-            </span>
-          )}
-        </div>
-
-        {/* RIGHT SECTION — Desktop */}
-        <div className="toolbar-right toolbar-desktop-only">
-          {/* Run Code Button */}
-          <button
-            onClick={onToggleOutput}
-            className={`btn-premium ${showOutput ? 'btn-premium-run-active' : 'btn-premium-run'}`}
-            id="run-code-btn"
-            title="Run Code (Ctrl+Enter)"
-            aria-label="Run code"
-          >
-            <RunIcon />
-            <span className="toolbar-btn-text">Run</span>
-          </button>
-
-          {/* Chat Toggle Button */}
-          <button
-            onClick={onToggleChat}
-            className={`btn-premium ${showChat ? 'btn-premium-chat-active' : 'btn-premium-ghost'} relative`}
-            id="chat-toggle-btn"
-            title="Chat (Ctrl+Shift+C)"
-            aria-label="Toggle chat"
-          >
-            <ChatIcon />
-            <span className="toolbar-btn-text">Chat</span>
-            {unreadChat > 0 && (
-              <span className="chat-unread-badge">{unreadChat > 9 ? '9+' : unreadChat}</span>
-            )}
-          </button>
-
-          {/* History Toggle Button */}
-          <button
-            onClick={onToggleHistory}
-            className={`btn-premium ${showHistory ? 'btn-premium-chat-active' : 'btn-premium-ghost'} toolbar-hide-tablet`}
-            id="history-toggle-btn"
-            title="History (Ctrl+Shift+H)"
-            aria-label="Toggle history"
-          >
-            <HistoryIcon />
-            <span className="toolbar-btn-text">History</span>
-          </button>
-
-          {/* AI Assistant Toggle Button */}
-          <button
-            onClick={onToggleAI}
-            className={`btn-premium ${showAI ? 'btn-premium-chat-active' : 'btn-premium-ghost'} toolbar-hide-tablet`}
-            id="ai-toggle-btn"
-            title="AI Assistant (Ctrl+Shift+A)"
-            aria-label="Toggle AI assistant"
-          >
-            <AIIcon />
-            <span className="toolbar-btn-text">AI</span>
-          </button>
-
-          {/* Room Lock & settings dropdown */}
-          {!isReadOnly && (
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`btn-premium ${showSettings ? 'btn-premium-chat-active' : 'btn-premium-ghost'}`}
-                title="Room Settings"
-                aria-label="Room settings"
-              >
-                <SettingsIcon />
-                <span className="toolbar-btn-text">Settings</span>
-              </button>
-              {settingsDropdown}
+    <header ref={toolbarRef} className="ws-header">
+      <div className="ws-topbar">
+        <a href="/" className="ws-brand" aria-label="CodeShare home"><span><UIIcon name="code" /></span>codeshare<span className="ws-brand-dot">.</span></a>
+        <span className="ws-header-divider" aria-hidden="true" />
+        <div className="ws-room"><UIIcon name="folder" /><span className="ws-room-label">Workspace</span><UIIcon name="chevron" /><strong title={roomId}>{roomId}</strong></div>
+        <span className="ws-mode">{isReadOnly ? 'Read only' : isLocked ? 'Editing locked' : 'Shared room'}</span>
+        <div className="ws-topbar-actions">
+          <div className="ws-presence"><PresenceDot /></div>
+          <button className="ws-share" onClick={handleCopyUrl} aria-label="Copy room link"><UIIcon name={copied ? 'check' : 'link'} /><span>{copied ? 'Link copied' : 'Share room'}</span></button>
+          <details ref={menuRef} className="ws-more" onClick={(event) => {
+            if ((event.target as HTMLElement).closest('button')) event.currentTarget.open = false;
+          }} onKeyDown={(event) => {
+            if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
+          }}>
+            <summary className="ws-icon-button" aria-label="More workspace actions" title="More workspace actions"><UIIcon name="more" /></summary>
+            <div className="ws-menu">
+              <div className="ws-menu-label">WORKSPACE ACTIONS</div>
+              <button onClick={handleNewPad} disabled={isCreating}><UIIcon name="plus" />{isCreating ? 'Creating workspace…' : 'New workspace'}</button>
+              <button onClick={handleCopyReadOnlyUrl}><UIIcon name={copiedReadOnly ? 'check' : 'eye'} />{copiedReadOnly ? 'Read-only link copied' : 'Copy read-only link'}</button>
+              <button onClick={handleCopyCode}><UIIcon name="copy" />Copy code</button>
+              <button onClick={handleDownload}><UIIcon name="download" />Download file</button>
+              <div className="ws-menu-note">Your room link brings people here.</div>
             </div>
-          )}
-
-          {/* Divider */}
-          <div className="toolbar-divider" />
-
-          {isReadOnly ? (
-            <button
-              onClick={handleCopyCode}
-              className="btn-premium btn-premium-ghost"
-              id="copy-code-btn"
-              aria-label="Copy code"
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-              <span className="toolbar-btn-text">Copy Code</span>
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={handleNewPad}
-                disabled={isCreating}
-                className="btn-premium btn-premium-primary"
-                id="new-pad-btn"
-                aria-label="Create new pad"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <span className="toolbar-btn-text">{isCreating ? 'Creating...' : 'New Pad'}</span>
-              </button>
-
-              <button
-                onClick={handleCopyUrl}
-                className="btn-premium btn-premium-ghost toolbar-hide-tablet"
-                id="copy-url-btn"
-                aria-label="Copy URL"
-              >
-                {copied ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8.5l3 3 7-7" stroke="var(--accent-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span className="toolbar-btn-text" style={{ color: 'var(--accent-green)' }}>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                      <path d="M6.5 10.5L3.75 13.25a1.77 1.77 0 01-2.5-2.5L4 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M9.5 5.5l2.75-2.75a1.77 1.77 0 012.5 2.5L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M6 10l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                    <span className="toolbar-btn-text">Copy URL</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={handleCopyReadOnlyUrl}
-                className="btn-premium btn-premium-ghost toolbar-hide-tablet"
-                id="copy-readonly-url-btn"
-                title="Copy link that only allows reading/viewing"
-                aria-label="Copy read-only link"
-              >
-                {copiedReadOnly ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                      <path d="M3 8.5l3 3 7-7" stroke="var(--accent-green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span className="toolbar-btn-text" style={{ color: 'var(--accent-green)' }}>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" />
-                    </svg>
-                    <span className="toolbar-btn-text">Read-Only</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={handleDownload}
-                className="btn-premium btn-premium-ghost toolbar-hide-tablet"
-                id="download-btn"
-                aria-label="Save and download"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                  <path d="M8 2v9M4.5 7.5L8 11l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                <span className="toolbar-btn-text">Save</span>
-              </button>
-            </>
-          )}
+          </details>
         </div>
-
-        {/* HAMBURGER BUTTON — Mobile only */}
-        <button
-          className="hamburger-btn"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Open menu"
-          aria-expanded={mobileMenuOpen}
-        >
-          {mobileMenuOpen ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          )}
-        </button>
       </div>
-
-      {/* MOBILE MENU OVERLAY */}
-      <div
-        className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}
-        onClick={() => setMobileMenuOpen(false)}
-      />
-
-      {/* MOBILE MENU DRAWER */}
-      {mobileMenuOpen && (
-        <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-              Menu
-            </span>
-            <button
-              className="output-clear-btn"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-label="Close menu"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Mobile action buttons */}
-          <button
-            onClick={() => { onToggleOutput(); setMobileMenuOpen(false); }}
-            className={`btn-premium ${showOutput ? 'btn-premium-run-active' : 'btn-premium-run'}`}
-          >
-            <RunIcon /> Run Code
-          </button>
-
-          <button
-            onClick={() => { onToggleChat(); setMobileMenuOpen(false); }}
-            className={`btn-premium ${showChat ? 'btn-premium-chat-active' : 'btn-premium-ghost'} relative`}
-          >
-            <ChatIcon /> Chat
-            {unreadChat > 0 && (
-              <span className="chat-unread-badge">{unreadChat > 9 ? '9+' : unreadChat}</span>
-            )}
-          </button>
-
-          <button
-            onClick={() => { onToggleHistory(); setMobileMenuOpen(false); }}
-            className={`btn-premium ${showHistory ? 'btn-premium-chat-active' : 'btn-premium-ghost'}`}
-          >
-            <HistoryIcon /> History
-          </button>
-
-          <button
-            onClick={() => { onToggleAI(); setMobileMenuOpen(false); }}
-            className={`btn-premium ${showAI ? 'btn-premium-chat-active' : 'btn-premium-ghost'}`}
-          >
-            <AIIcon /> AI Assistant
-          </button>
-
-          {!isReadOnly && (
-            <>
-              <div className="toolbar-divider" style={{ width: '100%', height: '1px' }} />
-
-              <button
-                onClick={() => { handleNewPad(); setMobileMenuOpen(false); }}
-                disabled={isCreating}
-                className="btn-premium btn-premium-primary"
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                {isCreating ? 'Creating...' : 'New Pad'}
-              </button>
-
-              <button onClick={() => { handleCopyUrl(); }} className="btn-premium btn-premium-ghost">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                  <path d="M6.5 10.5L3.75 13.25a1.77 1.77 0 01-2.5-2.5L4 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M9.5 5.5l2.75-2.75a1.77 1.77 0 012.5 2.5L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M6 10l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                {copied ? 'Copied!' : 'Copy URL'}
-              </button>
-
-              <button onClick={() => { handleCopyReadOnlyUrl(); }} className="btn-premium btn-premium-ghost">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                  <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-                  <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-                {copiedReadOnly ? 'Copied!' : 'Copy Read-Only Link'}
-              </button>
-
-              <button onClick={() => { handleDownload(); setMobileMenuOpen(false); }} className="btn-premium btn-premium-ghost">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-80">
-                  <path d="M8 2v9M4.5 7.5L8 11l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                Save & Download
-              </button>
-            </>
-          )}
+      <div className="ws-toolrow" role="toolbar" aria-label="Editor toolbar">
+        <div className="ws-editing-tools">
+          <button onClick={onToggleFileTree} className={`ws-tool ws-files-toggle ${showFileTree ? 'is-active' : ''}`} aria-label="Toggle file tree" aria-pressed={showFileTree} title="Toggle file explorer"><UIIcon name="folder" /><span>Explorer</span></button>
+          <span className="ws-tool-divider" />
+          <div className="ws-language"><span className="ws-language-dot" /><select value={language} onChange={handleLanguageChange} disabled={isReadOnly} aria-label="Programming language" id="language-selector">{LANGUAGES.map((lang) => <option key={lang.id} value={lang.id}>{lang.label}</option>)}</select></div>
+          {isReadOnly && <span className="ws-readonly"><UIIcon name="eye" />Read only</span>}
         </div>
-      )}
-    </>
+        <div className="ws-utility-tools">
+          <button onClick={onToggleOutput} className={`ws-run ${showOutput ? 'is-active' : ''}`} id="run-code-btn" aria-label="Run code" aria-pressed={showOutput} title="Run code (Ctrl+Enter)"><RunIcon /><span>Run</span><kbd>⌃ ↵</kbd></button>
+          <span className="ws-tool-divider" />
+          <button onClick={onToggleChat} className={`ws-tool ${showChat ? 'is-active' : ''}`} aria-label="Toggle chat" aria-pressed={showChat} title="Chat (Ctrl+Shift+C)" id="chat-toggle-btn"><ChatIcon /><span>Chat</span>{unreadChat > 0 && <b className="ws-unread">{unreadChat > 9 ? '9+' : unreadChat}</b>}</button>
+          <button onClick={onToggleHistory} className={`ws-tool ${showHistory ? 'is-active' : ''}`} aria-label="Toggle history" aria-pressed={showHistory} title="History (Ctrl+Shift+H)" id="history-toggle-btn"><HistoryIcon /><span>History</span></button>
+          <button onClick={onToggleAI} className={`ws-tool ws-ai ${showAI ? 'is-active' : ''}`} aria-label="Toggle AI assistant" aria-pressed={showAI} title="AI assistant (Ctrl+Shift+A)" id="ai-toggle-btn"><UIIcon name="sparkles" /><span>AI assistant</span></button>
+          {!isReadOnly && <div className="ws-settings" ref={dropdownRef}>
+            <button onClick={() => setShowSettings(!showSettings)} className={`ws-tool ${showSettings ? 'is-active' : ''}`} aria-label="Room settings" aria-expanded={showSettings} title="Room security settings"><SettingsIcon /><span>Settings</span></button>
+            {settingsDropdown}
+          </div>}
+        </div>
+      </div>
+      <span className="sr-only" role="status">{copied ? 'Room link copied' : copiedReadOnly ? 'Read-only link copied' : ''}</span>
+      {actionMessage && <div className="ws-notice" role="status"><span>{actionMessage}</span><button onClick={() => setActionMessage('')} aria-label="Dismiss notification"><UIIcon name="close" /></button></div>}
+    </header>
   );
 }

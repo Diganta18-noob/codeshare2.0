@@ -1,18 +1,22 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import FileIcon from '@/components/FileIcon';
+import UIIcon from '@/components/UIIcon';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 import { getLanguageForExtension } from '@/lib/languages';
 import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
+import { useMobileDrawer } from '@/components/providers/useMobileDrawer';
 
 interface FileTreeProps {
   roomId: string;
   isVisible: boolean;
   onToggle: () => void;
+  isReadOnly?: boolean;
 }
 
-export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps) {
+export default function FileTree({ roomId, isVisible, onToggle, isReadOnly = false }: FileTreeProps) {
   const { files, activeFileIndex, setActiveFileIndex, addFile, deleteFile, renameFile } = useEditorStore();
   const [newFileName, setNewFileName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -23,9 +27,11 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
   const filesListRef = useRef<HTMLDivElement>(null);
 
   usePanelEntrance(sidebarRef, isVisible, 'left');
+  useMobileDrawer(sidebarRef, isVisible, onToggle);
 
   const handleCreateFile = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     const name = newFileName.trim();
     if (!name) return;
 
@@ -44,6 +50,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
 
   const handleDelete = (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isReadOnly) return;
     if (files.length <= 1) {
       alert('You must keep at least one file in the workspace.');
       return;
@@ -64,6 +71,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
   };
 
   const handleRenameSubmit = (index: number) => {
+    if (isReadOnly) return;
     const val = renameValue.trim();
     if (val && val !== files[index].name) {
       renameFile(index, val);
@@ -77,30 +85,6 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
   const handleFileClick = (index: number) => {
     setActiveFileIndex(index);
     socket.emit('file-switch', { roomId, activeFileIndex: index });
-  };
-
-  const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'js':
-      case 'jsx':
-        return <span style={{ color: '#f7df1e' }}>JS</span>;
-      case 'ts':
-      case 'tsx':
-        return <span style={{ color: '#3178c6' }}>TS</span>;
-      case 'py':
-        return <span style={{ color: '#3776ab' }}>PY</span>;
-      case 'html':
-        return <span style={{ color: '#e34f26' }}>H</span>;
-      case 'css':
-        return <span style={{ color: '#1572b6' }}>C</span>;
-      case 'json':
-        return <span style={{ color: '#8bc34a' }}>{'{}'}</span>;
-      case 'md':
-        return <span style={{ color: '#0086ff' }}>M↓</span>;
-      default:
-        return <span style={{ color: '#a0aec0' }}>📄</span>;
-    }
   };
 
   return (
@@ -122,10 +106,10 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
         {/* Header */}
         <div className="sidebar-header relative">
           <span className="sidebar-header-title tracking-widest font-mono text-[10px] uppercase font-bold text-slate-400">
-            Workspace Files
+            Explorer
           </span>
           <div className="flex gap-2 items-center">
-            <button
+            {!isReadOnly && <button
               onClick={() => setIsAdding(!isAdding)}
               className="output-clear-btn p-1 pulse-ring-btn hover:scale-105 transition-transform"
               title="Create File"
@@ -134,7 +118,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-            </button>
+            </button>}
             <button onClick={onToggle} className="output-clear-btn p-1" title="Close sidebar" aria-label="Close sidebar">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -144,12 +128,15 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
           </div>
         </div>
 
+        <div className="ws-explorer-root"><UIIcon name="chevron" /><UIIcon name="folder" /><span title={roomId}>{roomId}</span><b>{files.length}</b></div>
+
         {/* Create New File Form */}
-        {isAdding && (
+        {isAdding && !isReadOnly && (
           <form onSubmit={handleCreateFile} className="p-3 border-b" style={{ borderColor: 'var(--bg-border)' }}>
             <input
               type="text"
               placeholder="filename.js"
+              aria-label="New file name"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               className="chat-input w-full py-1.5 text-xs font-mono"
@@ -170,7 +157,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
             return (
               <div
                 key={file.name + '-' + idx}
-                onClick={() => !isRenaming && handleFileClick(idx)}
+                data-active={isActive}
                 className={`file-item flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer group text-xs transition-all duration-200 ${
                   isActive ? 'border-l-3 border-[var(--accent-primary)] shadow-sm' : 'hover:translate-x-0.5'
                 }`}
@@ -181,9 +168,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
                 }}
               >
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <span className="font-bold font-mono text-[9px] w-5 text-center leading-none opacity-90 flex-shrink-0 transition-transform group-hover:scale-110">
-                    {getFileIcon(file.name)}
-                  </span>
+                  <FileIcon name={file.name} />
 
                   {isRenaming ? (
                     <input
@@ -200,11 +185,11 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="truncate font-mono tracking-tight font-medium">{file.name}</span>
+                    <button className="ws-file-select" onClick={() => handleFileClick(idx)} aria-current={isActive ? 'true' : undefined} title={file.name}>{file.name}</button>
                   )}
                 </div>
 
-                {!isRenaming && (
+                {!isRenaming && !isReadOnly && (
                   <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity flex-shrink-0">
                     <button
                       onClick={(e) => startRename(idx, file.name, e)}

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
+import { useMobileDrawer } from '@/components/providers/useMobileDrawer';
 
 interface Version {
   _id: string;
@@ -30,6 +31,7 @@ export default function HistoryPanel({ roomId, isOpen, onClose, isReadOnly }: Hi
   const panelRef = useRef<HTMLDivElement>(null);
 
   usePanelEntrance(panelRef, isOpen);
+  useMobileDrawer(panelRef, isOpen, onClose);
 
   const fetchVersions = async () => {
     setLoading(true);
