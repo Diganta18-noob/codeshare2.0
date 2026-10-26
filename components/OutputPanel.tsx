@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
-import { gsap } from 'gsap';
+import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -163,15 +163,7 @@ export default function OutputPanel({ isVisible, onToggle }: OutputPanelProps) {
   const panelRef  = useRef<HTMLDivElement>(null);
 
   // GSAP Output Panel expansion
-  useEffect(() => {
-    if (isVisible && panelRef.current) {
-      gsap.fromTo(
-        panelRef.current,
-        { height: 0, opacity: 0 },
-        { height: 260, opacity: 1, duration: 0.4, ease: 'power3.out' }
-      );
-    }
-  }, [isVisible]);
+  usePanelEntrance(panelRef, isVisible, 'bottom');
 
   // Auto-listen for Ctrl+Enter run events dispatched from EditorWrapper
   useEffect(() => {

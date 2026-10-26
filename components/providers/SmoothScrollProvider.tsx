@@ -13,7 +13,7 @@ export default function SmoothScrollProvider({
 
   useEffect(() => {
     // Disable Lenis scroll hijacking inside editor room (/c/[roomId]) to ensure smooth native scrolling inside panels & editor
-    if (pathname?.startsWith('/c/')) return;
+    if (pathname === '/' || pathname?.startsWith('/c/')) return;
 
     // Check if user prefers reduced motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

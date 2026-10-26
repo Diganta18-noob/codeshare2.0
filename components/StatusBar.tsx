@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { getLabelForLanguage } from '@/lib/languages';
-import { gsap } from 'gsap';
+
 
 interface StatusBarProps {
   roomId: string;
@@ -15,41 +15,6 @@ export default function StatusBar({ roomId }: StatusBarProps) {
   const lineCount = code.split('\n').length;
   const langLabel = getLabelForLanguage(language);
   const [timeAgo, setTimeAgo] = useState<string>('');
-
-  const langRef = useRef<HTMLDivElement>(null);
-  const charRef = useRef<HTMLSpanElement>(null);
-  const lineRef = useRef<HTMLSpanElement>(null);
-
-  // 3D Card flip animation on language change
-  useEffect(() => {
-    if (langRef.current) {
-      const tl = gsap.timeline();
-      tl.to(langRef.current, { rotateX: 90, duration: 0.15, ease: 'power2.in' })
-        .set(langRef.current, { color: '#8b5cf6' })
-        .to(langRef.current, { rotateX: 0, duration: 0.2, ease: 'back.out(1.5)' });
-    }
-  }, [language]);
-
-  // Pulse effect on char / line count changes
-  useEffect(() => {
-    if (charRef.current) {
-      gsap.fromTo(
-        charRef.current,
-        { scale: 1.15, color: '#8b5cf6' },
-        { scale: 1, color: 'var(--text-secondary)', duration: 0.25, ease: 'power1.out' }
-      );
-    }
-  }, [charCount]);
-
-  useEffect(() => {
-    if (lineRef.current) {
-      gsap.fromTo(
-        lineRef.current,
-        { scale: 1.15, color: '#8b5cf6' },
-        { scale: 1, color: 'var(--text-secondary)', duration: 0.25, ease: 'power1.out' }
-      );
-    }
-  }, [lineCount]);
 
   useEffect(() => {
     if (!createdAt) return;
@@ -108,21 +73,21 @@ export default function StatusBar({ roomId }: StatusBarProps) {
 
       {/* Characters */}
       <div className="status-bar-item status-bar-hide-tablet">
-        <span ref={charRef} className="inline-block transition-transform">{charCount.toLocaleString()} chars</span>
+        <span className="inline-block transition-transform">{charCount.toLocaleString()} chars</span>
       </div>
 
       <div className="status-bar-separator status-bar-hide-tablet" />
 
       {/* Lines */}
       <div className="status-bar-item">
-        <span ref={lineRef} className="inline-block transition-transform">{lineCount} lines</span>
+        <span className="inline-block transition-transform">{lineCount} lines</span>
       </div>
 
       <div className="status-bar-separator" />
 
       {/* Language with 3D Flip */}
       <div
-        ref={langRef}
+
         className="status-bar-item font-semibold inline-block transition-transform origin-center"
         style={{ color: 'var(--accent-primary)', perspective: '400px' }}
       >

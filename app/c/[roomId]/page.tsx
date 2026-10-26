@@ -70,7 +70,7 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
   const roomData = await getRoomData(roomId);
 
   return (
-    <div className="flex h-screen flex-col" style={{ background: 'var(--bg-base)' }}>
+    <div className="workspace-page flex flex-col" style={{ background: 'var(--bg-base)' }}>
       <EditorWrapper
         roomId={roomId}
         initialCode={roomData.code}

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 import { getLanguageForExtension } from '@/lib/languages';
-import { gsap } from 'gsap';
+import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
 
 interface FileTreeProps {
   roomId: string;
@@ -22,25 +22,7 @@ export default function FileTree({ roomId, isVisible, onToggle }: FileTreeProps)
   const sidebarRef = useRef<HTMLDivElement>(null);
   const filesListRef = useRef<HTMLDivElement>(null);
 
-  // GSAP Sidebar Entrance & File Item Stagger
-  useEffect(() => {
-    if (isVisible && sidebarRef.current) {
-      gsap.fromTo(
-        sidebarRef.current,
-        { width: 0, opacity: 0 },
-        { width: 260, opacity: 1, duration: 0.35, ease: 'power3.out' }
-      );
-
-      const items = filesListRef.current?.querySelectorAll('.file-item');
-      if (items && items.length > 0) {
-        gsap.fromTo(
-          items,
-          { y: 6, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.3, stagger: 0.05, ease: 'power2.out', delay: 0.15 }
-        );
-      }
-    }
-  }, [isVisible, files.length]);
+  usePanelEntrance(sidebarRef, isVisible, 'left');
 
   const handleCreateFile = (e: React.FormEvent) => {
     e.preventDefault();

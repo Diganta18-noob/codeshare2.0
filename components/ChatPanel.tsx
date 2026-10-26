@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { socket } from '@/lib/socket';
-import { gsap } from 'gsap';
+import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
 
 interface ChatMessage {
   id: string;
@@ -38,25 +38,11 @@ export default function ChatPanel({ roomId, isVisible, onToggle, onNewMessage }:
   }, [messages]);
 
   // GSAP slide-in animation on open (ease: expo.out, duration: 0.45)
+  usePanelEntrance(panelRef, isVisible, 'right');
   useEffect(() => {
-    if (isVisible && panelRef.current) {
-      gsap.fromTo(
-        panelRef.current,
-        { x: 320, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.45, ease: 'expo.out' }
-      );
-
-      const msgs = panelRef.current.querySelectorAll('.chat-message');
-      if (msgs.length > 0) {
-        gsap.fromTo(
-          msgs,
-          { y: 12, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.1 }
-        );
-      }
-
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
+    if (!isVisible) return;
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 150);
+    return () => window.clearTimeout(timer);
   }, [isVisible]);
 
   // Socket event listeners

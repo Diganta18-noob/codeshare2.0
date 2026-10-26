@@ -63,7 +63,7 @@ export default function Toolbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLSpanElement>(null);
+
 
   // Settings dropdown state
   const [showSettings, setShowSettings] = useState(false);
@@ -71,41 +71,18 @@ export default function Toolbar({
   const [passwordStatus, setPasswordStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // GSAP Toolbar entrance & Logo Scramble
+  // A short entrance keeps the workspace calm and respects motion preferences.
   useEffect(() => {
-    if (toolbarRef.current) {
-      gsap.fromTo(
-        toolbarRef.current,
-        { y: -52, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }
-      );
-    }
-
-    if (logoRef.current) {
-      const targetText = '{ codeshare }';
-      const glyphs = '!@#$%^&*()_+-=[]{}|;:,.<>?/1234567890';
-      let iteration = 0;
-      const interval = setInterval(() => {
-        if (!logoRef.current) return;
-        logoRef.current.innerText = targetText
-          .split('')
-          .map((char, index) => {
-            if (index < iteration) return targetText[index];
-            return glyphs[Math.floor(Math.random() * glyphs.length)];
-          })
-          .join('');
-
-        if (iteration >= targetText.length) {
-          clearInterval(interval);
-        }
-        iteration += 1 / 3;
-      }, 30);
-
-      return () => clearInterval(interval);
-    }
+    const media = gsap.matchMedia();
+    media.add('(prefers-reduced-motion: no-preference)', () => {
+      if (toolbarRef.current) {
+        gsap.fromTo(toolbarRef.current, { y: -8, opacity: 0 }, {
+          y: 0, opacity: 1, duration: 0.25, ease: 'power2.out',
+        });
+      }
+    });
+    return () => media.revert();
   }, []);
-
-
   // Unlock password states
   const [unlockPassword, setUnlockPassword] = useState('');
   const [showUnlockInput, setShowUnlockInput] = useState(false);
@@ -389,15 +366,12 @@ export default function Toolbar({
         {/* LEFT SECTION */}
         <div className="toolbar-left">
           {/* Logo */}
-          <span
-            ref={logoRef}
+          <a
+            href="/"
             className="toolbar-logo"
-            onClick={() => router.push('/')}
-            role="link"
-            tabIndex={0}
           >
             {'{ codeshare }'}
-          </span>
+          </a>
 
           {/* Sidebar Toggle */}
           <button

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
-import { gsap } from 'gsap';
+import { usePanelEntrance } from '@/components/providers/usePanelEntrance';
 
 interface AIMessage {
   id: string;
@@ -31,15 +31,11 @@ export default function AIPanel({ roomId, isVisible, onToggle }: AIPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  usePanelEntrance(panelRef, isVisible, 'right');
   useEffect(() => {
-    if (isVisible && panelRef.current) {
-      gsap.fromTo(
-        panelRef.current,
-        { x: 320, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
-      );
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
+    if (!isVisible) return;
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 150);
+    return () => window.clearTimeout(timer);
   }, [isVisible]);
 
   const [apiKey, setApiKey] = useState('');
