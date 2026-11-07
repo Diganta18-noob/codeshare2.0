@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { requireAdmin } from '@/lib/auth';
 import Room from '@/models/Room';
+import SqlWorkspace from '@/models/SqlWorkspace';
+import SqlQuery from '@/models/SqlQuery';
 import { logAudit } from '@/lib/audit';
 import { globalCache } from '@/lib/cache';
 
@@ -24,6 +26,8 @@ export async function DELETE(
     }
 
     await Room.deleteOne({ roomId });
+    await SqlWorkspace.deleteMany({ roomKey: room._id });
+    await SqlQuery.deleteMany({ roomKey: room._id });
 
     await logAudit({
       request,

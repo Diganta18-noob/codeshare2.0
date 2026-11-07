@@ -59,6 +59,19 @@ export default function Editor({ roomId, isReadOnly }: EditorProps) {
 
   const isRemoteChange = useRef(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  useEffect(() => {
+    const reveal = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.roomId !== roomId || !Number.isInteger(detail.line) || !Number.isInteger(detail.column)) return;
+      const ed = editorRef.current;
+      if (!ed) return;
+      ed.setPosition({ lineNumber: detail.line, column: detail.column });
+      ed.revealLineInCenter(detail.line);
+      ed.focus();
+    };
+    window.addEventListener('codeshare-sql-error-location', reveal);
+    return () => window.removeEventListener('codeshare-sql-error-location', reveal);
+  }, [roomId]);
   const containerRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<any>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();

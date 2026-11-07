@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  experimental: {
+    serverComponentsExternalPackages: ['sql.js'],
+    outputFileTracingIncludes: {
+      '/api/rooms/*/sql': ['./lib/sql-worker.cjs', './node_modules/sql.js/package.json', './node_modules/sql.js/dist/sql-wasm.js', './node_modules/sql.js/dist/sql-wasm.wasm'],
+    },
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

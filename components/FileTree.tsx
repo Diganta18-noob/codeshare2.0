@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import FileIcon from '@/components/FileIcon';
 import UIIcon from '@/components/UIIcon';
+import SqlExplorer from '@/components/SqlExplorer';
 import { useEditorStore } from '@/store/editorStore';
 import { socket } from '@/lib/socket';
 import { getLanguageForExtension } from '@/lib/languages';
@@ -129,6 +130,8 @@ export default function FileTree({ roomId, isVisible, onToggle, isReadOnly = fal
         </div>
 
         <div className="ws-explorer-root"><UIIcon name="chevron" /><UIIcon name="folder" /><span title={roomId}>{roomId}</span><b>{files.length}</b></div>
+
+        <SqlExplorer roomId={roomId} />
 
         {/* Create New File Form */}
         {isAdding && !isReadOnly && (

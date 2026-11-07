@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "test:sql": "node --test tests/sql-engine.test.cjs",
+    "test:sql:integration": "node --env-file=.env.local --import tsx --test tests/sql-api.test.ts",
     "dev": "node --max-old-space-size=4096 server.js",
     "dev:frontend": "next dev",
     "dev:backend": "node --max-old-space-size=4096 socket-server.js",
@@ -23,6 +25,7 @@
     "react-dom": "^18.2.0",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
+    "sql.js": "^1.15.2",
     "xss": "^1.0.15",
     "zustand": "^4.5.0"
   },
@@ -35,6 +38,7 @@
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.0.0"
   }
 }

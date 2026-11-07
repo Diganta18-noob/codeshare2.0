@@ -182,3 +182,31 @@ JavaScript runs client-side inside a sandboxed iframe out-of-the-box. To execute
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/Diganta18-noob/codeshare2.0/issues).
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more details.
+
+## Persistent SQL workspace
+
+Choose **SQL**, write SQLite SQL, and press **Run** or **Ctrl+Enter**. The first successful run creates a room database backed by the existing `MONGODB_URI` configuration. Collaborators in the same room share its tables. The **SQL Database** explorer folder lists persisted tables; click one to preview column names/types and page through its rows.
+
+```sql
+CREATE TABLE IF NOT EXISTS customers (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  city TEXT
+);
+INSERT INTO customers (name, city) VALUES ('Ada', 'Kolkata');
+SELECT * FROM customers;
+```
+
+Each script commits atomically; errors roll back the script. SQL error panels include the original SQLite message, the failing statement with line numbers, a suggested fix, and a button to jump to the statement in the editor. Locations identify the statement start; this SQLite integration does not expose an exact error-token offset. Result sets retain duplicate column labels and NULL values. MongoDB stores an isolated SQLite binary image per room, rather than interpreting SQL or creating filesystem directories. Concurrent saves return a retry message instead of overwriting data. Room deletion removes its SQL workspace, and a recreated room cannot inherit old tables.
+
+Limits: SQLite dialect, 64 KB script, 100 statements, 3 seconds execution, 2 MB saved database, 200 rows per query preview (100 per table browser page), and 512 KB displayed output. Administrative PRAGMA, ATTACH, extensions and explicit transaction commands are blocked. Password-protected SQL requires unlocking the room; access expires after two hours or a password change. Locked rooms execute read-only queries. Other language runners are unchanged.
+
+The SQL worker uses Node.js worker threads; the Next.js file trace includes its source and sql.js WASM assets for server deployment. No external Piston service is required for SQL.
+
+Run `npm run test:sql` for engine tests and `npm run test:sql:integration` for tests against your configured MongoDB. Integration tests create random `sql-test-*` rooms and remove only those test records afterward.
+
+### Saved SQL queries
+
+Open **Query history** under the **SQL Database** explorer section or in the SQL output toolbar. Every script submitted with Run is stored in MongoDB before execution, including scripts that fail. History records the full SQL, timestamp, execution duration, success/error status, and error details. Records are paginated and isolated by room, and follow the same room password access rules. Table-browser previews are not added to history.
+
+Select an entry to inspect or copy it. **Open SQL file** opens the saved SQL in a new file without replacing your current file or executing it. History preserves query text and outcomes, not historical snapshots of table contents. Queries run before this feature was added cannot be reconstructed. Room deletion removes its query history.

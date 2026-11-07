@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Room from '@/models/Room';
 import crypto from 'crypto';
+import { issueSqlAccess, sqlCookieName } from '@/lib/sql-access';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,13 +47,18 @@ export async function POST(
       if (files.length === 0) {
         files = [{ name: 'index.js', code: room.code || '', language: room.language || 'javascript' }];
       }
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         code: room.code,
         language: room.language,
         files,
         createdAt: room.createdAt,
       });
+      response.cookies.set(sqlCookieName(roomId), issueSqlAccess(roomId, room.passwordHash), {
+        httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict',
+        path: `/api/rooms/${encodeURIComponent(roomId)}`, maxAge: 2 * 60 * 60,
+      });
+      return response;
     } else {
       return NextResponse.json(
         { success: false, error: 'Incorrect password' },

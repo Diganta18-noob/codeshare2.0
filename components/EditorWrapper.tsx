@@ -41,6 +41,12 @@ export default function EditorWrapper({
   const [showKeybindings, setShowKeybindings] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
+  useEffect(() => {
+    const openSqlPreview = () => { setShowOutput(true); if (window.matchMedia('(max-width: 768px)').matches) setShowFileTree(false); };
+    window.addEventListener('codeshare-sql-preview', openSqlPreview);
+    window.addEventListener('codeshare-sql-history', openSqlPreview);
+    return () => { window.removeEventListener('codeshare-sql-preview', openSqlPreview); window.removeEventListener('codeshare-sql-history', openSqlPreview); };
+  }, []);
   const [showChat, setShowChat] = useState(false);
   const [unreadChat, setUnreadChat] = useState(0);
 
@@ -136,6 +142,7 @@ export default function EditorWrapper({
       // Ctrl+Enter to run code
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         setShowOutput(true);
         window.dispatchEvent(new CustomEvent('codeshare-run'));
       }
@@ -165,8 +172,8 @@ export default function EditorWrapper({
         setShowHistory(false);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
 
   // Auto-snapshot of code on 5-minute inactivity
@@ -361,7 +368,7 @@ export default function EditorWrapper({
           </div>
 
           {/* Output Panel (bottom) */}
-          <OutputPanel isVisible={showOutput} onToggle={handleToggleOutput} />
+          <OutputPanel roomId={roomId} isReadOnly={editorIsReadOnly} isVisible={showOutput} onToggle={handleToggleOutput} />
         </div>
 
         {/* History Panel (right sidebar, before Chat sidebar if both open) */}

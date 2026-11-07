@@ -399,7 +399,7 @@ export default function Toolbar({
           {isReadOnly && <span className="ws-readonly"><UIIcon name="eye" />Read only</span>}
         </div>
         <div className="ws-utility-tools">
-          <button onClick={onToggleOutput} className={`ws-run ${showOutput ? 'is-active' : ''}`} id="run-code-btn" aria-label="Run code" aria-pressed={showOutput} title="Run code (Ctrl+Enter)"><RunIcon /><span>Run</span><kbd>⌃ ↵</kbd></button>
+          <button onClick={() => { if (!showOutput) onToggleOutput(); window.dispatchEvent(new Event('codeshare-run')); }} className={`ws-run ${showOutput ? 'is-active' : ''}`} id="run-code-btn" aria-label="Run code" title="Run code (Ctrl+Enter)"><RunIcon /><span>Run</span><kbd>⌃ ↵</kbd></button>
           <span className="ws-tool-divider" />
           <button onClick={onToggleChat} className={`ws-tool ${showChat ? 'is-active' : ''}`} aria-label="Toggle chat" aria-pressed={showChat} title="Chat (Ctrl+Shift+C)" id="chat-toggle-btn"><ChatIcon /><span>Chat</span>{unreadChat > 0 && <b className="ws-unread">{unreadChat > 9 ? '9+' : unreadChat}</b>}</button>
           <button onClick={onToggleHistory} className={`ws-tool ${showHistory ? 'is-active' : ''}`} aria-label="Toggle history" aria-pressed={showHistory} title="History (Ctrl+Shift+H)" id="history-toggle-btn"><HistoryIcon /><span>History</span></button>
